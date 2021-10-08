@@ -9,6 +9,7 @@ Primary Contributor: Daniel R. Herber (danielrherber on Github)
 import numpy as np
 from numpy.matlib import repmat
 from dtqpy.src.classes.DTQPy_CLASS_SETUP import *
+from dtqpy.src.mesh.DTQPy_MESH_pts import DTQPy_MESH_pts
 
 def DTQPy_extact_order_subsets(Otemp):
     
@@ -72,9 +73,9 @@ def DTQPy_initialize(setup,dt):
     i.tf = setup.tf
     
     #create mesh
-    t = np.linspace(i.t0,i.tf,dt.nt)
-    t = t[None].T
-    w = []; D = []
+    
+    t,w,D = DTQPy_MESH_pts(i,dt)
+    
     nt = len(t); i.nt = nt;
     i.t = t;i.w = w;i.D = D;
     h = np.diff(t,axis=0);i.h = h

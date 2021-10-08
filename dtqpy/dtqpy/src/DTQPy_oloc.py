@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Tue Aug  3 08:33:16 2021
+DTQPy_oloc
+Create the open loop control trajectories for a linearized model of a wind turbine
 
-@author: athulsun
+Contributor: Athul Krishna Sundarrajan (AthulKrishnaSundarrajan on Github)
+Contributor: Daniel Zalkind (dzalkind on Github)
+Primary Contributor: Daniel R. Herber (danielrherber on Github)
 """
 
 from mat4py import loadmat
@@ -18,6 +21,7 @@ import pickle
 from dtqpy.src.classes.DTQPy_CLASS_OPTS import *
 from dtqpy.src.classes.DTQPy_CLASS_SETUP import *
 from dtqpy.src.DTQPy_solve import DTQPy_solve
+from dtqpy.src.DTQPy_OLOC_mesh import DTQPy_OLOC_mesh
 
 def BuildLambda(Ax):
         return lambda t: Ax(t)
@@ -174,8 +178,6 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,dtqp_options,plot=False):
 
     filterflag = 0
     
-    
-
     if filterflag:                         
         t_f = 1
         dt = tt[2,0]-tt[1,0]
@@ -185,12 +187,9 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,dtqp_options,plot=False):
         Wind_speed = filtfilt(b,1,Wind_speed,axis = 0)
         
     
-    opts = options()
+    opts = DTQPy_OLOC_mesh(tt,Wind_speed,dtqp_options,t0,tf)
 
-    opts.dt.nt = dtqp_options['nt']
-    opts.solver.tolerence = dtqp_options['tolerance']
-    opts.solver.maxiters = dtqp_options['maxiters']
-    opts.solver.function = 'pyoptsparse'
+    
 
     time = np.linspace(tt[0],tt[-1],opts.dt.nt)
     W_pp = PchipInterpolator(np.squeeze(tt),np.squeeze(Wind_speed))
@@ -201,8 +200,6 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,dtqp_options,plot=False):
     W_fun = lambda t: W_pp(t)
 
     DXoDt_fun = lambda t: (-DXo_fun(W_fun(t)).T*DW_fun(t)).T
-
-    
 
     ## Disc2 cont
 
@@ -319,7 +316,7 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,dtqp_options,plot=False):
     LB[2].matrix = LBs
 
     # lagrange terms
-
+    
     R1 = 1e-8; R2 = 1e+8
 
     lx = 0
@@ -394,7 +391,7 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,dtqp_options,plot=False):
     U = Ul + Uo_off
     
     # Compute output 
-    yl = np.zeros((opts.dt.nt,np.shape(yw)[0]))
+    yl = np.zeros((internal.nt,np.shape(yw)[0]))
     for i in range(len(T)):
         t = T[i,0]
         w = W_fun(t)

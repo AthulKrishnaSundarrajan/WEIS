@@ -52,7 +52,7 @@ if __name__ == '__main__':
 
     # generate wind files
     FAST_namingOut = 'oloc'
-    wind_directory = '/Users/dzalkind/Tools/WEIS-1/examples/13_DTQP/outputs/oloc/wind'
+    wind_directory = mydir + '/outputs/oloc/wind'
     if not os.path.exists(wind_directory):
         os.makedirs(wind_directory)
     rotorD = wt_init['assembly']['rotor_diameter']
@@ -85,6 +85,7 @@ if __name__ == '__main__':
         
         tt          = ts_file['t']
         level2_disturbance.append({'Time':tt, 'Wind': u_h})
+        
 
 
     # Linear Model
@@ -96,7 +97,7 @@ if __name__ == '__main__':
     lin_case_name = case_naming(n_lin_ws,'lin')
     OutputCon_flag = False
     
-    lin_pickle = mydir + os.sep + "LinearTurbine.pkl"
+    lin_pickle = mydir + os.sep + "LinearTurbine_full.pkl"
 
     if True and os.path.exists(lin_pickle):
         with open(lin_pickle,"rb") as pkl_file:
@@ -137,10 +138,10 @@ if __name__ == '__main__':
     if not os.path.exists(run_directory):
         os.makedirs(run_directory)
 
-
+    
     summary_stats, extreme_table, DELs, Damage = dtqp_wrapper(
         LinearTurbine, 
-        level2_disturbance, 
+        level2_disturbance[0:1], 
         analysis_options, 
         modeling_options,
         fst_vt, 

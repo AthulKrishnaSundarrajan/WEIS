@@ -24,12 +24,13 @@ class options:
             
      # options specific to direct transcription methods        
     class dt:
-        def __init__(self,defects = 'TR',quadrature = 'CTR',mesh = 'ED',nt = 100,meshr = None):
+        def __init__(self,defects = 'TR',quadrature = 'CTR',mesh = 'ED',nt = 100,meshr = None,t = []):
             self.defects = defects # method to transcribe the dynamics
             self.quadrature = quadrature # method to transcribe quadrature
             self.mesh = mesh # mesh
             self.nt = nt # number of time points in a given time horizon
             self.meshr = self.meshr() # mesh refinement
+            self.t = t # mesh
             
         class meshr:
             def __init__(self,method = 'None'):
