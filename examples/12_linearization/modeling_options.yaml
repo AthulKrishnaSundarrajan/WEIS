@@ -113,7 +113,7 @@ Level2:
         rated_offset: 0.75
         wind_speeds: [4., 6., 8., 10., 12., 14., 16.]
         DOFs: ['GenDOF','TwFADOF1','PtfmPDOF']
-        NLinTimes: 2
+        NLinTimes: 12
 
 Level1:
     potential_model_override: 2

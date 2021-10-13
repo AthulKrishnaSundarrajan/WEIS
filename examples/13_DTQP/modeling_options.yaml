@@ -114,7 +114,7 @@ Level2:
     DTQP:
         flag: True
         nt: 3000
-        maxiters: 15
+        maxiters: 150
         tolerance: 1e-5
 
 Level1:
@@ -126,11 +126,11 @@ DLC_driver:
     DLCs:
         - DLC: "1.1"
           ws_bin_size: 2
-          wind_speed: [16.,20.,24.]
+          wind_speed: [9.] #[16.,20.,24.]
           wave_height: [8.]
           wave_period: [2.]
-          wind_seed: [1,2,3]
-          n_seeds: 2
+          wind_seed: [1] #[1,2,3]
+          n_seeds: 1 #2
           analysis_time: 700.
           transient_time: 100.
           turbulent_wind:

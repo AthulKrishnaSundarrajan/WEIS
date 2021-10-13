@@ -13,6 +13,21 @@ from pCrunch import LoadsAnalysis, PowerProduction, FatigueParams
 
 import numpy as np
 
+class dict2class(object):
+    
+    def __init__(self,my_dict):
+        
+        for key in my_dict:
+            setattr(self,key,my_dict[key])
+            
+        self.A_ops = self.A
+        self.B_ops = self.B
+        self.C_ops = self.C
+        self.D_ops = self.D
+        
+        if isinstance(self.u_h,list):
+            self.u_h = np.array(self.u_h)
+
 weis_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 if __name__ == '__main__':
@@ -97,11 +112,13 @@ if __name__ == '__main__':
     lin_case_name = case_naming(n_lin_ws,'lin')
     OutputCon_flag = False
     
-    lin_pickle = mydir + os.sep + "LinearTurbine_full.pkl"
+    lin_pickle = mydir + os.sep + "LinTurbine_fix.pkl"
 
     if True and os.path.exists(lin_pickle):
         with open(lin_pickle,"rb") as pkl_file:
             LinearTurbine = pickle.load(pkl_file)
+        if isinstance(LinearTurbine,list):
+            LinearTurbine = dict2class(LinearTurbine[0])
     
     else:   # load the model and run MBC3
         LinearTurbine = LinearTurbineModel(
