@@ -6,7 +6,7 @@ import os
 
 mydir = os.path.dirname(os.path.realpath(__file__))
 
-IEA_dir = mydir + os.sep + "outputs" + os.sep + "IEA_level2" 
+IEA_dir = mydir + os.sep + "outputs" + os.sep + "tower_doe_run" 
 ABCD_dir = IEA_dir + os.sep + "ABCD_matrices.pkl"
 SQL_path = IEA_dir + os.sep + "log_opt.sql"
 
@@ -40,15 +40,15 @@ for idx, case in enumerate(driver_cases):
     A_plot.append(ABCD_list[idx]['A'][1, 1])
     DVs.append(dvs[key])
     
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
-A_plot = np.array(A_plot)
-DVs = np.array(DVs)
+# A_plot = np.array(A_plot)
+# DVs = np.array(DVs)
 
-plt.scatter(DVs, A_plot[:])
+# plt.scatter(DVs, A_plot[:])
 
-plt.xlabel("Tower Young's Modulus, Pa")
-plt.ylabel('A[1, 1]')
-plt.tight_layout()
+# plt.xlabel("Tower Young's Modulus, Pa")
+# plt.ylabel('A[1, 1]')
+# plt.tight_layout()
 
-plt.show()
+# plt.show()

@@ -1,5 +1,5 @@
 general:
-    folder_output: outputs/tower_doe_new
+    folder_output: outputs/tower_doe_run
     fname_output: iea15mw
     
 design_variables:
@@ -22,7 +22,7 @@ design_variables:
       lower_bound: 29.4889e9
       upper_bound: 29.4889e9
     line_length:  # unstretched length in meters
-      flag: True
+      flag: False
       lower_bound: 875.
       upper_bound: 900.
 

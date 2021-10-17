@@ -100,6 +100,7 @@ ROSCO:
     omega_vs: 0.2
     zeta_pc: [1]
     omega_pc: [0.2]
+    
 Level2:
     flag: True
     simulation:         # could these be included in openfast options?
