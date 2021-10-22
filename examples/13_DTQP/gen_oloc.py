@@ -112,7 +112,7 @@ if __name__ == '__main__':
     lin_case_name = case_naming(n_lin_ws,'lin')
     OutputCon_flag = False
     
-    lin_pickle = mydir + os.sep + "LinTurbine_fix.pkl"
+    lin_pickle = mydir + os.sep + "LinTurbine_remred.pkl"
 
     if True and os.path.exists(lin_pickle):
         with open(lin_pickle,"rb") as pkl_file:
@@ -158,7 +158,7 @@ if __name__ == '__main__':
     
     summary_stats, extreme_table, DELs, Damage = dtqp_wrapper(
         LinearTurbine, 
-        level2_disturbance[0:1], 
+        level2_disturbance, 
         analysis_options, 
         modeling_options,
         fst_vt, 

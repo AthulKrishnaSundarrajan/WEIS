@@ -28,75 +28,79 @@ def DTQPy_OLOC_mesh(tt,Wind_speed,dtqp_options,t0,tf):
     opts.solver.maxiters = dtqp_options['maxiters']
     opts.solver.function = 'pyoptsparse'
     
-    nt = opts.dt.nt
+    '''
+    # AKS: Disabling this for now
+    '''
     
-    # get the mean wind speed of the distribution
-    Wind_mean = np.mean(Wind_speed)
+    # nt = opts.dt.nt
     
-    # check if mean wind speed is in the rated region 
-    mean_flag = (Wind_mean > 12.5)
+    # # get the mean wind speed of the distribution
+    # Wind_mean = np.mean(Wind_speed)
     
-    # check if there are wind speeds in the transition region 
-    transition_flag = Wind_speed < 12.5
+    # # check if mean wind speed is in the rated region 
+    # mean_flag = (Wind_mean > 12.5)
     
-    mesh_flag = mean_flag and transition_flag.any()
+    # # check if there are wind speeds in the transition region 
+    # transition_flag = Wind_speed < 12.5
     
-    if mesh_flag:
-        t = np.linspace(t0,tf,nt)
+    # mesh_flag = mean_flag and transition_flag.any()
+    
+    # if mesh_flag:
+    #     t = np.linspace(t0,tf,nt)
         
-        t_index = np.arange(0,nt)
+    #     t_index = np.arange(0,nt)
         
-        WS_pp = PchipInterpolator(np.squeeze(tt),np.squeeze(Wind_speed))
+    #     WS_pp = PchipInterpolator(np.squeeze(tt),np.squeeze(Wind_speed))
         
-        WS = WS_pp(t)
+    #     WS = WS_pp(t)
         
-        transition_index = WS < 12.5
+    #     transition_index = WS < 12.5
         
-        t_transition = t[transition_index]
+    #     t_transition = t[transition_index]
         
-        t_index_transition = t_index[transition_index]
+    #     t_index_transition = t_index[transition_index]
         
-        n_transition = len(t_transition)
+    #     n_transition = len(t_transition)
         
-        ranges =[]
+    #     ranges =[]
 
-        for k,g in groupby(enumerate(t_index_transition),lambda x:x[0]-x[1]):
-            group = (map(itemgetter(1),g))
-            group = list(map(int,group))
-            ranges.append((group[0],group[-1]))
+    #     for k,g in groupby(enumerate(t_index_transition),lambda x:x[0]-x[1]):
+    #         group = (map(itemgetter(1),g))
+    #         group = list(map(int,group))
+    #         ranges.append((group[0],group[-1]))
             
-        ranges = np.array(ranges)
+    #     ranges = np.array(ranges)
         
-        ind0 = ranges[0,0]
+    #     ind0 = ranges[0,0]
         
-        t_new = np.array([])
+    #     t_new = np.array([])
         
-        t_new = np.append(t_new,t[0:ind0])
+    #     t_new = np.append(t_new,t[0:ind0])
         
-        range_len = ranges[:,1] - ranges[:,0]
+    #     range_len = ranges[:,1] - ranges[:,0]
         
-        for i in range(len(range_len)):
-            if range_len[i] == 1 or range_len[i] == 0:
-                ind = ranges[i,:]
-                t_new = np.append(t_new,t[ind[0]])
-                t_new = np.append(t_new,t[ind[1]])
-            else:
-                n_ind = range_len[i]
-                ind = ranges[i,:]
-                tx = np.linspace(t[ind[0]],t[ind[1]],1*n_ind)
-                t_new = np.append(t_new,tx)
+    #     for i in range(len(range_len)):
+    #         if range_len[i] == 1 or range_len[i] == 0:
+    #             ind = ranges[i,:]
+    #             t_new = np.append(t_new,t[ind[0]])
+    #             t_new = np.append(t_new,t[ind[1]])
+    #         else:
+    #             n_ind = range_len[i]
+    #             ind = ranges[i,:]
+    #             tx = np.linspace(t[ind[0]],t[ind[1]],1*n_ind)
+    #             t_new = np.append(t_new,tx)
             
-            try:
-                ind1 = ranges[i,1]; ind2 = ranges[i+1,0]
-                t_new = np.append(t_new,t[ind1:ind2])
-            except:
-                pass
+    #         try:
+    #             ind1 = ranges[i,1]; ind2 = ranges[i+1,0]
+    #             t_new = np.append(t_new,t[ind1:ind2])
+    #         except:
+    #             pass
                 
-        ind_f = ranges[-1,-1]
-        t_new = np.append(t_new,t[ind_f:])
+    #     ind_f = ranges[-1,-1]
+    #     t_new = np.append(t_new,t[ind_f:])
         
-        opts.dt.mesh = 'USER';
-        opts.dt.t = t_new
+    #     opts.dt.mesh = 'USER';
+    #     opts.dt.t = t_new
         
         
         
