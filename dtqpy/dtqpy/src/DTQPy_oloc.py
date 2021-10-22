@@ -21,7 +21,7 @@ import pickle
 from dtqpy.src.classes.DTQPy_CLASS_OPTS import *
 from dtqpy.src.classes.DTQPy_CLASS_SETUP import *
 from dtqpy.src.DTQPy_solve import DTQPy_solve
-from dtqpy.src.DTQPy_OLOC_mesh import DTQPy_OLOC_mesh
+
 
 def BuildLambda(Ax):
         return lambda t: Ax(t)
@@ -187,9 +187,15 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,dtqp_options,plot=False):
         Wind_speed = filtfilt(b,1,Wind_speed,axis = 0)
         
     
-    opts = DTQPy_OLOC_mesh(tt,Wind_speed,dtqp_options,t0,tf)
-
+    # initiate class
+    opts = options()
     
+    # extract dtqp options and assign
+    opts.dt.nt = dtqp_options['nt']
+    opts.solver.tolerence = dtqp_options['tolerance']
+    opts.solver.maxiters = dtqp_options['maxiters']
+    opts.solver.function = 'pyoptsparse'
+
 
     time = np.linspace(tt[0],tt[-1],opts.dt.nt)
     W_pp = PchipInterpolator(np.squeeze(tt),np.squeeze(Wind_speed))

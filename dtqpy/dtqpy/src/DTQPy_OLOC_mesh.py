@@ -29,7 +29,7 @@ def DTQPy_OLOC_mesh(tt,Wind_speed,dtqp_options,t0,tf):
     opts.solver.function = 'pyoptsparse'
     
     '''
-    # AKS: Disabling this for now
+    AKS: Disabling this for now, doesnt work as intended
     '''
     
     # nt = opts.dt.nt
