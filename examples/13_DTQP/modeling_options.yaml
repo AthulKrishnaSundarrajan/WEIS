@@ -114,7 +114,7 @@ Level2:
     DTQP:
         flag: True
         nt: 3000
-        maxiters: 150
+        maxiters: 1500
         tolerance: 1e-5
 
 Level1:

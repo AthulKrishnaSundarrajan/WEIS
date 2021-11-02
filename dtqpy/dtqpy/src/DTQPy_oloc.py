@@ -218,6 +218,9 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,dtqp_options,plot=False):
 
     # -1*GS function
     GSn_fun = BuildFunction(ws,-xw[iGenSpeed,:])
+    
+    # PtfmPitch function
+    PP_fun = BuildFunction(ws,xw[iPtfmPitch,:])
 
     # Generator torque
     GT_fun = BuildFunction(ws,uw[iGenTorque,:])
@@ -327,7 +330,7 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,dtqp_options,plot=False):
 
     lx = 0
 
-    L = [LQ_objective() for n in range(5)]
+    L = [LQ_objective() for n in range(6)]
 
     # uRu
     L[lx].left = 1
@@ -364,9 +367,28 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,dtqp_options,plot=False):
     L4mat = np.empty((1,1),dtype = 'O')
     L4mat[0,0] = lambda t: GP_fun(W_fun(t))
     L[lx].matrix = L4mat
-
+    
+    lx = lx + 1
+    
+    # L[lx].left = 0
+    # L[lx].right = 0
+    # L5mat = np.empty((1,1),dtype = 'O')
+    # L5mat[0,0] = lambda t: 5.5 - PP_fun(W_fun(t))
+    # L[lx].matrix = L5mat
+    
+    # lx = lx+1
+    
+    L[lx].left = 2
+    L[lx].right = 2
+    L6mat = np.zeros((nx,nx))
+    L6mat[iPtfmPitch,iPtfmPitch] = -1e9
+    L[lx].matrix = L6mat
+    
     # 
-    scale = Scaling(right = 1, matrix = np.array([1,1e-16,1e-4]))
+    scale = [Scaling() for n in range(1)]
+    
+    scale[0].right = 1; scale[0].matrix = np.array([1,1e-16,1e-4])
+    #scale[1].right = 2;  S1mat = np.ones((nx,));S1mat[iPtfmPitch] = 1e-9;scale[1].matrix = S1mat
 
 
     # setup

@@ -40,7 +40,7 @@ def DTQPy_SOLVER_pyoptsparse(H,f,A,b,Aeq,beq,lb,ub,internal,opts):
         def __init__(self, H = H,f = f,A = A,b = b,Aeq = Aeq,beq = beq,lb = lb,ub = ub,internal = internal):
             
             # assign
-            self.H = H; self.f = f
+            self.H = H*1e-9; self.f = f*1e-9
             self.A = A; self.b = b; self.Aeq = Aeq; self.beq = beq;
             self.lb = lb; self.ub = ub
             self.internal = internal
