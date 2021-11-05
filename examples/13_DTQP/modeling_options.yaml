@@ -114,8 +114,9 @@ Level2:
     DTQP:
         flag: True
         nt: 3000
-        maxiters: 1500
+        maxiters: 150
         tolerance: 1e-5
+        PtfmPitch_penalty: -1e9
 
 Level1:
     potential_model_override: 2

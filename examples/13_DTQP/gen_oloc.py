@@ -102,7 +102,7 @@ if __name__ == '__main__':
         level2_disturbance.append({'Time':tt, 'Wind': u_h})
         
 
-
+    
     # Linear Model
     
     # number of linear wind speeds and other options below assume that you haven't changed 
@@ -112,7 +112,8 @@ if __name__ == '__main__':
     lin_case_name = case_naming(n_lin_ws,'lin')
     OutputCon_flag = False
     
-    lin_pickle = mydir + os.sep + "LinTurbine_remred.pkl"
+    #lin_pickle = mydir + os.sep + "outputs" + os.sep + "LinearTurbine_red.pkl"
+    lin_pickle = mydir + os.sep + "LinearTurbine_clipped.pkl" #"LinearTurbine_full.pkl"
 
     if True and os.path.exists(lin_pickle):
         with open(lin_pickle,"rb") as pkl_file:
@@ -131,7 +132,7 @@ if __name__ == '__main__':
         with open(lin_pickle,"wb") as pkl_file:
             pickle.dump(LinearTurbine,pkl_file)
     
-    
+    breakpoint()
     fst_vt = {}
     fst_vt['DISCON_in'] = {}
     fst_vt['DISCON_in']['PC_RefSpd'] = 0.7853192931562493

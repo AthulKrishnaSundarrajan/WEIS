@@ -123,9 +123,19 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,dtqp_options,plot=False):
     xw = LinearModels.x_ops
     uw = LinearModels.u_ops
     yw = LinearModels.y_ops; 
-    
     # wind speeds
     ws = LinearModels.u_h
+    
+    Plotflag = False
+    
+    if Plotflag:
+        fig,ax = plt.subplots(1)
+        ax.plot(ws,np.rad2deg(xw[0,:]),'*-')
+        ax.set_ylim([-2,10])
+        ax.set_ylabel("PtfmPitch [deg]")
+        ax.set_xlabel("WindSpeed [m/s]")
+    
+    
 
     # construct LPV models
     # A matrix   
@@ -261,6 +271,7 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,dtqp_options,plot=False):
         if const in DescStates:
             iConst = DescStates.index(const)
             ub[iConst] = constraints[const][1]      # max, min would be index 0
+            lb[iConst] = 0
         elif const in DescOutputs:
             iConst = DescOutputs.index(const)
             # do other output constraint things
@@ -381,7 +392,7 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,dtqp_options,plot=False):
     L[lx].left = 2
     L[lx].right = 2
     L6mat = np.zeros((nx,nx))
-    L6mat[iPtfmPitch,iPtfmPitch] = -1e9
+    L6mat[iPtfmPitch,iPtfmPitch] = dtqp_options['PtfmPitch_penalty']
     L[lx].matrix = L6mat
     
     # 
@@ -406,6 +417,7 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,dtqp_options,plot=False):
     s.Scaling = scale
     s.t0 = t0
     s.tf = tf
+    s.ScaleObjective = True
     
     [T,Ul,Xl,P,F,internal,opts] = DTQPy_solve(s,opts)
 
