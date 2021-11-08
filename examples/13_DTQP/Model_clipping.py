@@ -179,7 +179,7 @@ def Hinf_error(Aw,Bw,Cw,Dw,u_h,DescCntrlInpt,DescOutput,FitInd,ValInd):
 
 mydir = os.path.dirname(os.path.realpath(__file__))  # get path to this file
 
-pkl_file = mydir + os.sep + "outputs" + os.sep +  "LinearTurbine_full.pkl" 
+pkl_file = mydir + os.sep + "LinearTurbine_full.pkl" 
 
 with open(pkl_file,'rb') as handle:
     ABCD_list = pickle.load(handle)
