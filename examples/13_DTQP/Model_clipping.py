@@ -201,6 +201,15 @@ DescStates = ABCD_list.DescStates
 
 nl = len(u_h)
 
+_ind = np.rad2deg(xw[0,:]) > 6
+
+ind_o = np.arange(nl)
+
+ind_clip = ind_o[_ind]; n_c = len(ind_clip)
+
+ind_fix = ind_clip[0]-1
+
+
 # FitInd,ValInd = Get_indices(nl)
 
     
@@ -214,14 +223,6 @@ nl = len(u_h)
 
 # fig,ax = plt.subplots(1)
 # ax.plot(u_h,Hcombined,'*-')
-
-_ind = np.rad2deg(xw[0,:]) > 6
-
-ind_o = np.arange(nl)
-
-ind_clip = ind_o[_ind]; n_c = len(ind_clip)
-
-ind_fix = ind_clip[0]-1
 
 Anew = Aw
 Bnew = Bw
@@ -256,9 +257,9 @@ for i in range(nl):
         Cnew[:,:,i] = Cnew[:,:,ind_fix]
         Dnew[:,:,i] = Dnew[:,:,ind_fix]
         
-        xw_new[:,i] = xw_new[:,ind_fix]
-        uw_new[:,i] = uw_new[:,ind_fix]
-        yw_new[:,i] = yw_new[:,ind_fix]
+        xw_new[0,i] = xw_new[0,ind_fix]
+        # uw_new[:,i] = uw_new[:,ind_fix]
+        # yw_new[:,i] = yw_new[:,ind_fix]
         
 
 fig,ax = plt.subplots(1)
@@ -268,5 +269,5 @@ ax.plot(u_h,np.rad2deg(xw[0,:]))
 # FitInd,ValInd = ReverseIndices(FitInd, ValInd)   
 
 # Hnew_fix2 = Hinf_error(Anew, Bnew, Cnew, Dnew, u_new, DescCntrlInpt, DescOutput, FitInd, ValInd) 
-Save_pickle(Anew, Bnew, Cnew, Dnew, xw_new, uw_new, yw_new, u_h, DescStates, DescCntrlInpt, DescOutput, 'LinModel_clipped.pkl')
+Save_pickle(Anew, Bnew, Cnew, Dnew, xw_new, uw, yw, u_h, DescStates, DescCntrlInpt, DescOutput, 'LinearTurbine_clippedN.pkl')
 #Fn,Vn = ReverseIndices(FitInd, ValInd)

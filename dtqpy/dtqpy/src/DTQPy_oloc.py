@@ -126,7 +126,7 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,dtqp_options,plot=False):
     # wind speeds
     ws = LinearModels.u_h
     
-    Plotflag = False
+    Plotflag = True
     
     if Plotflag:
         fig,ax = plt.subplots(1)
@@ -136,7 +136,7 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,dtqp_options,plot=False):
         ax.set_xlabel("WindSpeed [m/s]")
     
     
-
+    
     # construct LPV models
     # A matrix   
     A_op_pp = PchipInterpolator(ws, Aw, axis = 0)
@@ -496,7 +496,7 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,dtqp_options,plot=False):
         fig2.subplots_adjust(hspace = 0.65)
         
         plt.show()
-   
+    
     return T,U,X,Y
     
 
