@@ -21,7 +21,7 @@ constraints:
       max: 0.2
     Max_PtfmPitch:
       flag: True
-      max: 6
+      max: 6.5
 
 driver:
   optimization:

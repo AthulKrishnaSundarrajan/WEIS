@@ -126,7 +126,7 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,dtqp_options,plot=False):
     # wind speeds
     ws = LinearModels.u_h
     
-    Plotflag = True
+    Plotflag = False
     
     if Plotflag:
         fig,ax = plt.subplots(1)
@@ -231,7 +231,7 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,dtqp_options,plot=False):
     
     # PtfmPitch function
     PP_fun = BuildFunction(ws,xw[iPtfmPitch,:])
-
+    
     # Generator torque
     GT_fun = BuildFunction(ws,uw[iGenTorque,:])
 
@@ -265,7 +265,7 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,dtqp_options,plot=False):
     ub = np.ones((nx,1))*np.inf
     lb = -np.ones((nx,1))*np.inf
     
-
+    
     # set ub values for PtfmPitch and Genspeed
     for const in constraints:
         if const in DescStates:
@@ -496,6 +496,26 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,dtqp_options,plot=False):
         fig2.subplots_adjust(hspace = 0.65)
         
         plt.show()
+        
+        
+    SensPlot = False
+    
+    if SensPlot:
+        fig, ((ax1,ax2)) = plt.subplots(2,1,)
+        
+        ax1.plot(T,np.rad2deg(X[:,iPtfmPitch]))
+        ax1.set_xlim([t0,tf])
+        ax1.set_title('Ptfm Pitch [deg]')
+        
+        Qty = 'SrvD GenPwr, (kW)'
+        Yind = DescOutput.index(Qty)
+        ax2.plot(T,Y[:,Yind])
+        ax2.set_xlim([t0,tf])
+        ax2.set_title(Qty)
+        
+        
+        fig.subplots_adjust(hspace = 0.65)
+        fig.suptitle("Penalty value:" + str(dtqp_options['PtfmPitch_penalty']))
     
     return T,U,X,Y
     
