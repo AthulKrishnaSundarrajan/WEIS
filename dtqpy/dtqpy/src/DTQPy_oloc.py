@@ -271,7 +271,7 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,dtqp_options,plot=False):
         if const in DescStates:
             iConst = DescStates.index(const)
             ub[iConst] = constraints[const][1]      # max, min would be index 0
-            lb[iConst] = 0
+            #lb[iConst] = 0
         elif const in DescOutputs:
             iConst = DescOutputs.index(const)
             # do other output constraint things
