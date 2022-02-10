@@ -9,6 +9,8 @@ Primary Contributor: Daniel R. Herber (danielrherber on Github)
 """
 # import pyoptsparse
 from pyoptsparse import IPOPT, Optimization
+from pyoptsparse.pyOpt_MPI import myMPI
+from mpi4py import MPI
 from scipy import sparse
 
 
@@ -32,6 +34,9 @@ def DTQPy_SOLVER_ipopt(H,f,A,b,Aeq,beq,lb,ub,internal,opts):
     optOptions = {'max_iter':solver.maxiters,'tol':solver.tolerence,'print_level':1,
                 'file_print_level':5,'dual_inf_tol':float(np.sqrt(solver.tolerence))}
    
+    # get rank
+    comm = MPI.COMM_WORLD 
+    rank = comm.Get_rank()
     
     # obtain the number of linear equality/inequality constraints
     n = A.shape[0]; neq = Aeq.shape[0]
@@ -83,45 +88,52 @@ def DTQPy_SOLVER_ipopt(H,f,A,b,Aeq,beq,lb,ub,internal,opts):
             fail = False
            
             return funcsens, fail
+       
+    if rank == 0:
+
+        # initialize problem   
+        prob = PyOptSp_wrapper(H =H, f = f, A = A,b = b,Aeq = Aeq,beq = beq,lb = lb,ub = ub,internal = internal)
+
+        # solver preferences
+        optProb = Optimization("DTQPy",prob.ObjFun,comm = myMPI().COMM_WORLD)
         
-    # initialize problem   
-    prob = PyOptSp_wrapper(H =H, f = f, A = A,b = b,Aeq = Aeq,beq = beq,lb = lb,ub = ub,internal = internal)
-    
-    # solver preferences
-    optProb = Optimization("DTQPy",prob.ObjFun)
-    
-    # add objective function
-    optProb.addObj("obj")
-    
-    # number of optimization variables
-    nx = internal.nx
-    
-    # LB and UB for the optimization variables
-    x0 = np.zeros(nx)
-    optProb.addVarGroup("xvars", nx, lower=lb, upper=ub, value=x0)
-    
-    # construct the upper and lower bounds for linear equality and inequality constraints
-    # beq < Aeq < beq
-    # -inf < A < b
-    lower = np.vstack([-np.inf*np.ones((n,1)),beq.todense()])
-    upper = np.vstack([b.todense(),beq.todense()])
-    
-    # add linear constraints
-    optProb.addConGroup(
-        "lincon", # type
-        n + neq, # number of linear constraints
-        lower = lower, # lower limit
-        upper = upper, # upper limit
-        linear = True, # linear
-        jac = {"xvars": sparse.vstack([A,Aeq])} # jacobian/gradient of linear constraints
-        )
-    
-    # setup IPOPT problem
-    opt = IPOPT(args,options = optOptions)
-    
-    # solve the problem
-    sol = opt(optProb,sens = prob.Sens)
-    
+        # add objective function
+        optProb.addObj("obj")
+        
+        # number of optimization variables
+        nx = internal.nx
+        
+        # LB and UB for the optimization variables
+        x0 = np.zeros(nx)
+        optProb.addVarGroup("xvars", nx, lower=lb, upper=ub, value=x0)
+        
+        # construct the upper and lower bounds for linear equality and inequality constraints
+        # beq < Aeq < beq
+        # -inf < A < b
+        lower = np.vstack([-np.inf*np.ones((n,1)),beq.todense()])
+        upper = np.vstack([b.todense(),beq.todense()])
+        
+        # add linear constraints
+        optProb.addConGroup(
+            "lincon", # type
+            n + neq, # number of linear constraints
+            lower = lower, # lower limit
+            upper = upper, # upper limit
+            linear = True, # linear
+            jac = {"xvars": sparse.vstack([A,Aeq])} # jacobian/gradient of linear constraints
+            )
+        
+        # setup IPOPT problem
+        opt = IPOPT(args,options = optOptions)
+        
+        # solve the problem
+        sol = opt(optProb,sens = prob.Sens)
+    else:
+        sol = None
+      
+    # broadcast solution
+    #comm.bcast(sol,root=0)
+   
     # extract results
     X = sol.xStar
     X = X['xvars']
