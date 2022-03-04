@@ -22,6 +22,7 @@ from dtqpy.src.DTQPy_solve import DTQPy_solve
 def BuildLambda(Ax):
         return lambda t: Ax(t)
     
+
     
 def ModelClipping(Aw,Bw,Cw,Dw,xw,u_h):
     
@@ -108,51 +109,42 @@ def TVmat2cell(f,time):
             
     return A
 
+def BuildLambdaZ(b1,Yoind_op1,W_fun1):
+    return lambda t: b1 - Yoind_op1(W_fun1(t))
+    
 def Generate_AddtionalConstraints(DescOutput,Cw,Dw,ws,W_fun,time,Qty,b,yw):
+
+    # Get the index for the quantity
+    indQty = DescOutput.index(Qty)
     
-    # get the number of constraints 
-    n_con = len(Qty)
+    # Get corresponding columns in the C and D matrices
+    Cqty = Cw[:,indQty,:]
+    Dqty = Dw[:,indQty,:]
+    Yoqty = yw[indQty,:]
     
-    if len(Qty) == len(b):
-        pass
-    else:
-        raise Exception("The number of constraints and the maximum values are not equal")
-        
-    # initialize
-    Z = [Simple_Linear_Constraints() for n in range(n_con)]
+    # generate interpolating functions
+    Cind_pp = PchipInterpolator(ws,Cqty.T,axis = 1)
+    Dind_pp = PchipInterpolator(ws,Dqty.T,axis = 1)
+    Yoind_pp = PchipInterpolator(ws,Yoqty, axis = 1)
     
-    for i in range(n_con):
-        
-        # Get the index for the quantity
-        indQty = DescOutput.index(Qty[i])
-        
-        # Get corresponding columns in the C and D matrices
-        Cqty = Cw[:,indQty,:]
-        Dqty = Dw[:,indQty,:]
-        Yoqty = yw[indQty,:]
-        
-        # generate interpolating functions
-        Cind_pp = PchipInterpolator(ws,Cqty.T,axis = 1)
-        Dind_pp = PchipInterpolator(ws,Dqty.T,axis = 1)
-        Yoind_pp = PchipInterpolator(ws,Yoqty, axis = 1)
-        
-        Cind_op = lambda w: Cind_pp(w)
-        Dind_op = lambda w: Dind_pp(w)
-        Yoind_op = lambda w: Yoind_pp(w)
-        
-        # initialize 
-        linearZ = [Simple_Bounds() for n in range(2)]
-        
-        # assign
-        linearZ[0].right = 2; linearZ[0].matrix = TVmat2cell(lambda t: Cind_op(W_fun(t)),time)
-        linearZ[1].right = 1; linearZ[1].matrix = TVmat2cell(lambda t: Dind_op(W_fun(t)),time)
-        
-        Z[i].linear = linearZ
-        Z[i].b = lambda t: b[i] - Yoind_op(W_fun(t))
+    Cind_op = lambda w: Cind_pp(w)
+    Dind_op = lambda w: Dind_pp(w)
+    Yoind_op = lambda w: Yoind_pp(w)
+    
+    # initialize 
+    linearZ = [Simple_Bounds() for n in range(2)]
+    
+    # assign
+    linearZ[0].right = 2; linearZ[0].matrix = TVmat2cell(lambda t: Cind_op(W_fun(t)),time)
+    linearZ[1].right = 1; linearZ[1].matrix = TVmat2cell(lambda t: Dind_op(W_fun(t)),time)
+    
+    linear = linearZ
+    
+    b = BuildLambdaZ(b,Yoind_op,W_fun) #lambda t: b[i] - Yoind_op(W_fun(t))
     
     
     
-    return Z
+    return linear,b
     
 
 
@@ -255,9 +247,9 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,plot=False):
     opts = options()
 
     opts.dt.nt = 1000
-    opts.solver.tolerence = 1e-4
-    opts.solver.maxiters = 150000
-    opts.solver.function = 'osqp'
+    opts.solver.tolerence = 1e-6
+    opts.solver.maxiters = 100
+    opts.solver.function = 'ipopt'
 
     time = np.linspace(tt[0],tt[-1],opts.dt.nt)
     W_pp = PchipInterpolator(np.squeeze(tt),np.squeeze(Wind_speed))
@@ -301,19 +293,34 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,plot=False):
     r = Xo_fun(ws)
     
     # Constraints generated from output
-    OutputCon_flag = False
+    OutputCon_flag = True
     
     if OutputCon_flag:
         
         # quantities
+       
         Qty = ["ED TwrBsFxt, (kN)", "ED TwrBsMxt, (kN-m)"]
         
         # upper limit
-        b = [5000,35000]
+        
+        b_max = [6000,35000] #,35000
         
         # create constraints
-        Z = Generate_AddtionalConstraints(DescOutput, Cw, Dw, ws, W_fun, time, Qty,b,yw)
-
+        
+        # get the number of constraints 
+        n_con = len(Qty)
+        
+        if len(Qty) == len(b_max):
+            pass
+        else:
+            raise Exception("The number of constraints and the maximum values are not equal")
+        
+        Z = [Simple_Linear_Constraints() for n in range(n_con)]
+        
+        for i in range(n_con):
+            linear,b = Generate_AddtionalConstraints(DescOutput, Cw, Dw, ws, W_fun, time, Qty[i],b_max[i],yw)
+            Z[i].linear = linear; Z[i].b = b
+            
     # lambda function to find the values of lambda function at specific indices
     indexat = lambda expr,index: expr[index,:]
     
@@ -330,7 +337,7 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,plot=False):
         if const in DescStates:
             iConst = DescStates.index(const)
             ub[iConst] = constraints[const][1]      # max, min would be index 0
-            #lb[iConst] = 0
+            lb[iConst] = constraints[const][0]
         elif const in DescOutputs:
             iConst = DescOutputs.index(const)
             # do other output constraint things
@@ -413,7 +420,7 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,plot=False):
     L[lx].left = 2;
     L[lx].right = 2;
     L1 = np.zeros((nx,nx))
-    L1[iPtfmPitch,iPtfmPitch] = 1e9
+    L1[iPtfmPitch,iPtfmPitch] = -1e9
     L[lx].matrix = L1
     
     lx = lx+1
@@ -556,11 +563,13 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,plot=False):
                     ax.plot(T,Y[:,Yind])
                     ax.set_xlim([t0,tf])
                     ax.set_title(Qty[i])
+                    ax.hlines(b[i],xmin = t0, xmax = tf,color = 'k')
                 else:   
                     Yind = DescOutput.index(Qty[i])
                     ax[i].plot(T,Y[:,Yind])
                     ax[i].set_xlim([t0,tf])
                     ax[i].set_title(Qty[i])
+                    ax[i].hlines(b_max[i],xmin = t0, xmax = tf,color = 'k')
             fig3.subplots_adjust(hspace = 0.65)
 
         plt.show()
