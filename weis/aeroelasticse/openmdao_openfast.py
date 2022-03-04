@@ -58,6 +58,18 @@ def make_coarse_grid(s_grid, diam):
     s_coarse.append(s_grid[-1])
     return np.array(s_coarse)
 
+class dict2class(object):
+    
+    def __init__(self,my_dict):
+        
+        for key in my_dict:
+            setattr(self,key,my_dict[key])
+            
+        self.A_ops = self.A
+        self.B_ops = self.B
+        self.C_ops = self.C
+        self.D_ops = self.D
+
     
 class FASTLoadCases(ExplicitComponent):
     def initialize(self):
@@ -236,6 +248,7 @@ class FASTLoadCases(ExplicitComponent):
                 n_member = modopt["floating"]["members"]["n_members"]
                 for k in range(n_member):
                     n_height_mem = modopt["floating"]["members"]["n_height"][k]
+                    n_ball = modopt["floating"]["members"]["n_ballasts"][k]
                     self.add_input(f"member{k}:joint1", np.zeros(3), units="m")
                     self.add_input(f"member{k}:joint2", np.zeros(3), units="m")
                     self.add_input(f"member{k}:s", np.zeros(n_height_mem))
@@ -243,6 +256,7 @@ class FASTLoadCases(ExplicitComponent):
                     self.add_input(f"member{k}:s_ghost2", 0.0)
                     self.add_input(f"member{k}:outer_diameter", np.zeros(n_height_mem), units="m")
                     self.add_input(f"member{k}:wall_thickness", np.zeros(n_height_mem-1), units="m")
+                    self.add_input(f"member{k}:ballast_volume", np.zeros(n_ball), units="m**3")
 
             # Turbine level inputs
             self.add_discrete_input('rotor_orientation',val='upwind', desc='Rotor orientation, either upwind or downwind.')
@@ -513,212 +527,393 @@ class FASTLoadCases(ExplicitComponent):
             
             self.lin_idx = 0
 
+            self.case_detail_file = os.path.join(self.options['opt_options']['general']['folder_output'],'case_detail.pkl')
+            case_detail_list = []
+            
+            with open(self.case_detail_file,'wb') as handle:
+                pickle.dump(case_detail_list,handle)
+
     def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):
+        # extract modelling and analysis options
         modopt = self.options['modeling_options']
+        optopt = self.options['opt_options']
+        
+        # check if optimization and level 2 flags are set to True
+        if modopt['Level2']['flag'] and self.options['opt_options']['driver']['optimization']['flag']:
+            import openmdao.api as om
+            # We only want to have this special hacky logic when we have these specific design variables activated
+            
+            # Go through floating design variables
+            float_opt = self.options['opt_options']["design_variables"]["floating"]
+            if float_opt["joints"]["flag"]:
+                if float_opt["members"]["flag"]:
+                    for kgrp in float_opt["members"]["groups"]:
+                        if "ballast" in kgrp:
+                            DVs = [-inputs['member1:joint1'][0], inputs['member0:ballast_volume'][0], inputs['member1:ballast_volume'][0]]
+                            break  # This is important to break out of the for loop
+            
+            # get sql recorder file to get the values of previous iterations
+            sql_file_name = os.path.join(optopt['general']['folder_output'],'log_opt.sql')   
+            
+            # load case reader and get stored design variables
+            DV_stored = []
+            cr = om.CaseReader(sql_file_name)
+            driver_cases = cr.get_cases('driver')
+            
+            if len(driver_cases) != 0:
+                for idx, case in enumerate(driver_cases):
+                    dvs = case.get_design_vars(scaled=False)
+                    for key in dvs.keys():
+                        DV_stored.append(dvs[key])
+                
+                # reshape them into a (idx,n_dv) array       
+                n_dv = len(dvs.keys())
+                DV_stored = np.reshape(DV_stored,(idx+1,n_dv),order = 'C')
+                
+                rows = []
+                
+                # go through the list and see if the LM have been evaluated at this DV
+                for i in range(DV_stored.shape[0]):
+                    if all(abs(DV_stored[i,:]-DVs) <= 1e-2):
+                        rows.append(i)
+                
+                # if true get the latest value
+                if len(rows) != 0:
+                    store_flag = True
+                    rows = rows[-1]                  
+                else:
+                    store_flag = False # LM have not been evaluated for this DV
+                    
+            else:
+                store_flag = False # first iteration
+                                    
+        else:
+            store_flag = False # when optimization flag/level 2 flags are not active
+            
         #print(impl.world_comm().rank, 'Rotor_fast','start')
         sys.stdout.flush()
-
-        if modopt['Level2']['flag']:
-            self.sim_idx += 1
-            ABCD = {
-                'sim_idx' : self.sim_idx,
-                'A' : None,
-                'B' : None,
-                'C' : None,
-                'D' : None,
-                'x_ops':None,
-                'u_ops':None,
-                'y_ops':None,
-                'u_h':None,
-                'omega_rpm' : None,
-                'DescCntrlInpt' : None,
-                'DescStates' : None,
-                'DescOutput' : None,
-                'StateDerivOrder' : None,
-                'ind_fast_inps' : None,
-                'ind_fast_outs' : None,
-                'AEP': None
-                }
-            with open(self.lin_pkl_file_name, 'rb') as handle:
-                ABCD_list = pickle.load(handle)
-
-            ABCD_list.append(ABCD)
-            self.ABCD_list = ABCD_list
-
-            with open(self.lin_pkl_file_name, 'wb') as handle:
-                pickle.dump(ABCD_list, handle)
-
-        fst_vt = self.init_FAST_model()
-
-        if not modopt['Level3']['from_openfast']:
-            fst_vt = self.update_FAST_model(fst_vt, inputs, discrete_inputs)
-        else:
-            fast_reader = InputReader_OpenFAST()
-            fast_reader.FAST_InputFile  = modopt['Level3']['openfast_file']   # FAST input file (ext=.fst)
-            if os.path.isabs(modopt['Level3']['openfast_dir']):
-                fast_reader.FAST_directory  = modopt['Level3']['openfast_dir']   # Path to fst directory files
-            else:
-                fast_reader.FAST_directory  = os.path.join(weis_dir, modopt['Level3']['openfast_dir'])
-            fast_reader.path2dll            = modopt['General']['openfast_configuration']['path2dll']   # Path to dll file
-            fast_reader.execute()
-            fst_vt = fast_reader.fst_vt
-            fst_vt = self.load_FAST_model_opts(fst_vt)
-
-            # Fix TwrTI: WEIS modeling options have it as a single value...
-            if not isinstance(fst_vt['AeroDyn15']['TwrTI'],list):
-                fst_vt['AeroDyn15']['TwrTI'] = [fst_vt['AeroDyn15']['TwrTI']] * len(fst_vt['AeroDyn15']['TwrElev'])
-
-            # Fix AddF0: Should be a n x 1 array (list of lists):
-            fst_vt['HydroDyn']['AddF0'] = [[F0] for F0 in fst_vt['HydroDyn']['AddF0']]
-
-            if modopt['ROSCO']['flag']:
-                fst_vt['DISCON_in'] = modopt['General']['openfast_configuration']['fst_vt']['DISCON_in']
+        
+        if not store_flag:
+            
+            # if the LM have not been evaluated, go through the normal process and obtain LM
+            
+            print('----------------------------------------------------------------------------------')
+            print("Linearized matrices not available for this design. Evaluating linearized matrices")
+            print('----------------------------------------------------------------------------------')
+            
+            if modopt['Level2']['flag']:    
                 
-                
-        if self.model_only == True:
-            # Write input OF files, but do not run OF
-            self.write_FAST(fst_vt, discrete_outputs)
-        else:
-            # Write OF model and run
-            summary_stats, extreme_table, DELs, Damage, case_list, case_name, chan_time, dlc_generator  = self.run_FAST(inputs, discrete_inputs, fst_vt)
-
-            # Set up linear turbine model
-            if modopt['Level2']['flag']:
-                LinearTurbine = LinearTurbineModel(
-                self.FAST_runDirectory,
-                self.lin_case_name,
-                nlin=modopt['Level2']['linearization']['NLinTimes'],
-                reduceControls=True
-                )
-
-                # Save linearizations
-                print('Saving ABCD matrices!')
+                self.sim_idx += 1
                 ABCD = {
                     'sim_idx' : self.sim_idx,
-                    'A' : LinearTurbine.A_ops,
-                    'B' : LinearTurbine.B_ops,
-                    'C' : LinearTurbine.C_ops,
-                    'D' : LinearTurbine.D_ops,
-                    'x_ops':LinearTurbine.x_ops,
-                    'u_ops':LinearTurbine.u_ops,
-                    'y_ops':LinearTurbine.y_ops,
-                    'u_h':LinearTurbine.u_h,
-                    'omega_rpm' : LinearTurbine.omega_rpm,
-                    'DescCntrlInpt' : LinearTurbine.DescCntrlInpt,
-                    'DescStates' : LinearTurbine.DescStates,
-                    'DescOutput' : LinearTurbine.DescOutput,
-                    'StateDerivOrder' : LinearTurbine.StateDerivOrder,
-                    'ind_fast_inps' : LinearTurbine.ind_fast_inps,
-                    'ind_fast_outs' : LinearTurbine.ind_fast_outs
+                    'A' : None,
+                    'B' : None,
+                    'C' : None,
+                    'D' : None,
+                    'x_ops':None,
+                    'u_ops':None,
+                    'y_ops':None,
+                    'u_h':None,
+                    'omega_rpm' : None,
+                    'DescCntrlInpt' : None,
+                    'DescStates' : None,
+                    'DescOutput' : None,
+                    'StateDerivOrder' : None,
+                    'ind_fast_inps' : None,
+                    'ind_fast_outs' : None,
+                    'AEP': None
                     }
                 with open(self.lin_pkl_file_name, 'rb') as handle:
                     ABCD_list = pickle.load(handle)
-
-                ABCD_list[self.sim_idx] = ABCD
-
+    
+                ABCD_list.append(ABCD)
+                self.ABCD_list = ABCD_list
+    
                 with open(self.lin_pkl_file_name, 'wb') as handle:
                     pickle.dump(ABCD_list, handle)
-                    
-                lin_files = glob.glob(os.path.join(self.FAST_runDirectory, '*.lin'))
                 
-                dest = os.path.join(self.FAST_runDirectory, f'copied_lin_files_{self.lin_idx}')
-                Path(dest).mkdir(parents=True, exist_ok=True)
-                for file in lin_files:
-                    shutil.copy2(file, dest)
-                self.lin_idx += 1
-
-                # Shorten output names from linearization output to one like level3 openfast output
-                # This depends on how openfast sets up the linearization output names and may break if that is changed
-                OutList     = [out_name.split()[1][:-1] for out_name in LinearTurbine.DescOutput]
-                OutOps      = {}
-                for i_out, out in enumerate(OutList):
-                    OutOps[out] = LinearTurbine.y_ops[i_out,:]
-
-                # save to yaml, might want in analysis outputs
-                FileTools.save_yaml(
+                # store case details 
+                case_details = {
+                        'sim_idx':self.sim_idx,
+                        'case_list':None,
+                        'case_name':None,
+                        'chan_time':None
+                        }
+                with open(self.case_detail_file,'rb') as handle:
+                    case_detail_list = pickle.load(handle)
+                    
+                case_detail_list.append(case_details)
+                
+                with open(self.case_detail_file,'wb') as handle:
+                    pickle.dump(case_detail_list,handle)
+                    
+            fst_vt = self.init_FAST_model()
+            
+            if not modopt['Level3']['from_openfast']:
+                fst_vt = self.update_FAST_model(fst_vt, inputs, discrete_inputs)
+            else:
+                fast_reader = InputReader_OpenFAST()
+                fast_reader.FAST_InputFile  = modopt['Level3']['openfast_file']   # FAST input file (ext=.fst)
+                if os.path.isabs(modopt['Level3']['openfast_dir']):
+                    fast_reader.FAST_directory  = modopt['Level3']['openfast_dir']   # Path to fst directory files
+                else:
+                    fast_reader.FAST_directory  = os.path.join(weis_dir, modopt['Level3']['openfast_dir'])
+                fast_reader.path2dll            = modopt['General']['openfast_configuration']['path2dll']   # Path to dll file
+                fast_reader.execute()
+                fst_vt = fast_reader.fst_vt
+                fst_vt = self.load_FAST_model_opts(fst_vt)
+                
+                # Fix TwrTI: WEIS modeling options have it as a single value...
+                if not isinstance(fst_vt['AeroDyn15']['TwrTI'],list):
+                    fst_vt['AeroDyn15']['TwrTI'] = [fst_vt['AeroDyn15']['TwrTI']] * len(fst_vt['AeroDyn15']['TwrElev'])
+    
+                # Fix AddF0: Should be a n x 1 array (list of lists):
+                fst_vt['HydroDyn']['AddF0'] = [[F0] for F0 in fst_vt['HydroDyn']['AddF0']]
+    
+                if modopt['ROSCO']['flag']:
+                    fst_vt['DISCON_in'] = modopt['General']['openfast_configuration']['fst_vt']['DISCON_in']
+                    
+                    
+            if self.model_only == True:
+                # Write input OF files, but do not run OF
+                self.write_FAST(fst_vt, discrete_outputs)
+            else:
+                # Write OF model and run
+                summary_stats, extreme_table, DELs, Damage, case_list, case_name, chan_time, dlc_generator  = self.run_FAST(inputs, discrete_inputs, fst_vt)
+                
+                # Set up linear turbine model
+                if modopt['Level2']['flag']:
+                    LinearTurbine = LinearTurbineModel(
                     self.FAST_runDirectory,
-                    'OutOps.yaml',OutOps)
-
-                # Set up Level 2 disturbance (simulation or DTQP)
-                if modopt['Level2']['simulation']['flag'] or modopt['Level2']['DTQP']['flag']:
-                    # Extract disturbance(s)
-                    level2_disturbance = []
-                    for case in case_list:
-                        ts_file     = TurbSimFile(case[('InflowWind','FileName_BTS')])
-                        ts_file.compute_rot_avg(fst_vt['ElastoDyn']['TipRad'])
-                        u_h         = ts_file['rot_avg'][0,:]
-                        tt          = ts_file['t']
-                        level2_disturbance.append({'Time':tt, 'Wind': u_h})
-
-                # Run linear simulation:
-
-                # Get case list, wind inputs should have already been generated
-                if modopt['Level2']['simulation']['flag']:
-            
-                    if modopt['Level2']['DTQP']['flag']:
-                        raise Exception('Only DTQP or simulation flag can be set to true in Level2 modeling options')
-
-                    # This is going to use the last discon_in file of the linearization set as the simulation file
-                    # Currently fine because openfast is executed (or not executed if overwrite=False) after the file writing
-                    if 'DLL_InFile' in self.fst_vt['ServoDyn']:     # if using file inputs
-                        discon_in_file = os.path.join(self.FAST_runDirectory, self.fst_vt['ServoDyn']['DLL_InFile'])
-                    else:       # if using fst_vt inputs from openfast_openmdao
-                        discon_in_file = os.path.join(self.FAST_runDirectory, self.lin_case_name[0] + '_DISCON.IN')
-
-                    lib_name = os.path.join(os.path.dirname(os.path.realpath(__file__)),'../../local/lib/libdiscon'+lib_ext)
-
-                    ss = {}
-                    et = {}
-                    dl = {}
-                    dam = {}
-                    ct = []
-                    for i_dist, dist in enumerate(level2_disturbance):
-                        sim_name = 'l2_sim_{}'.format(i_dist)
-                        controller_int = ROSCO_ci.ControllerInterface(
-                            lib_name,
-                            param_filename=discon_in_file,
-                            DT=1/80,        # modelling input?
-                            sim_name = os.path.join(self.FAST_runDirectory,sim_name)
-                            )
-
-                        l2_out, _, P_op = LinearTurbine.solve(dist,Plot=False,controller=controller_int)
-
-                        output = OpenFASTOutput.from_dict(l2_out, sim_name, magnitude_channels=self.magnitude_channels)
-
-                        _name, _ss, _et, _dl, _dam = self.la._process_output(output)
-                        ss[_name] = _ss
-                        et[_name] = _et
-                        dl[_name] = _dl
-                        dam[_name] = _dam
-                        ct.append(l2_out)
-
-                        output.df.to_pickle(os.path.join(self.FAST_runDirectory,sim_name+'.p'))
-
-                        summary_stats, extreme_table, DELs, Damage = self.la.post_process(ss, et, dl, dam)
-
-                elif modopt['Level2']['DTQP']['flag']:
-
-                    summary_stats, extreme_table, DELs, Damage = dtqp_wrapper(
-                        LinearTurbine, 
-                        level2_disturbance, 
-                        self.options['opt_options'], 
-                        self.fst_vt, 
-                        self.la, 
-                        self.magnitude_channels, 
-                        self.FAST_runDirectory
+                    self.lin_case_name,
+                    nlin=modopt['Level2']['linearization']['NLinTimes'],
+                    reduceControls=True
                     )
-
-            # Post process regardless of level
-            self.post_process(summary_stats, extreme_table, DELs, Damage, case_list, dlc_generator, chan_time, inputs, discrete_inputs, outputs, discrete_outputs)
+    
+                    # Save linearizations
+                    print('Saving ABCD matrices!')
+                    ABCD = {
+                        'sim_idx' : self.sim_idx,
+                        'A' : LinearTurbine.A_ops,
+                        'B' : LinearTurbine.B_ops,
+                        'C' : LinearTurbine.C_ops,
+                        'D' : LinearTurbine.D_ops,
+                        'x_ops':LinearTurbine.x_ops,
+                        'u_ops':LinearTurbine.u_ops,
+                        'y_ops':LinearTurbine.y_ops,
+                        'u_h':LinearTurbine.u_h,
+                        'omega_rpm' : LinearTurbine.omega_rpm,
+                        'DescCntrlInpt' : LinearTurbine.DescCntrlInpt,
+                        'DescStates' : LinearTurbine.DescStates,
+                        'DescOutput' : LinearTurbine.DescOutput,
+                        'StateDerivOrder' : LinearTurbine.StateDerivOrder,
+                        'ind_fast_inps' : LinearTurbine.ind_fast_inps,
+                        'ind_fast_outs' : LinearTurbine.ind_fast_outs
+                        }
+                    with open(self.lin_pkl_file_name, 'rb') as handle:
+                        ABCD_list = pickle.load(handle)
+    
+                    ABCD_list[self.sim_idx] = ABCD
+    
+                    with open(self.lin_pkl_file_name, 'wb') as handle:
+                        pickle.dump(ABCD_list, handle)
+                        
+                    print('Saving case details!')    
+                    case_details = {
+                        'sim_idx':self.sim_idx,
+                        'case_list':case_list,
+                        'case_name':case_name,
+                        'chan_time':chan_time
+                        }
+                        
+                        
+                    with open(self.case_detail_file,'rb') as handle:
+                        case_detail_list = pickle.load(handle)
+                    
+                    case_detail_list[self.sim_idx] = case_details
+                    
+                    with open(self.case_detail_file,'wb') as handle:
+                        pickle.dump(case_detail_list,handle)
+                        
+                    lin_files = glob.glob(os.path.join(self.FAST_runDirectory, '*.lin'))
+                    
+                    dest = os.path.join(self.FAST_runDirectory, f'copied_lin_files_{self.lin_idx}')
+                    Path(dest).mkdir(parents=True, exist_ok=True)
+                    for file in lin_files:
+                        shutil.copy2(file, dest)
+                    self.lin_idx += 1
+    
+                    # Shorten output names from linearization output to one like level3 openfast output
+                    # This depends on how openfast sets up the linearization output names and may break if that is changed
+                    OutList     = [out_name.split()[1][:-1] for out_name in LinearTurbine.DescOutput]
+                    OutOps      = {}
+                    for i_out, out in enumerate(OutList):
+                        OutOps[out] = LinearTurbine.y_ops[i_out,:]
+    
+                    # save to yaml, might want in analysis outputs
+                    FileTools.save_yaml(
+                        self.FAST_runDirectory,
+                        'OutOps.yaml',OutOps)
+                                       
+               
+        else:
+            # if LM are available, use them for evaluating AEP
+            print('----------------------------------------------------------------------------------------')
+            print("Linearized models have been computed for this design already. Using them for AEP calculation")
+            print('----------------------------------------------------------------------------------------')
+            self.sim_idx +=1
             
-            # Save AEP value to pickle file
+            print('loading saved matrices!')
             with open(self.lin_pkl_file_name, 'rb') as handle:
-                    ABCD_list = pickle.load(handle)
-
-            ABCD_list[self.sim_idx]['AEP'] = outputs['AEP']
-
+                ABCD_list = pickle.load(handle)
+            
+            # get matrices from previous iteration
+            ABCD = ABCD_list[rows].copy()
+            
+            # update simindex
+            ABCD['sim_idx'] = self.sim_idx
+            
+            # add the matrices to the list
+            ABCD_list.append(ABCD)
+            
+            self.ABCD_list = ABCD_list
+            print('Saving ABCD matrices!')
+            
+            # save updated list
             with open(self.lin_pkl_file_name, 'wb') as handle:
                 pickle.dump(ABCD_list, handle)
+            
+            """
+            Some of the variables like case_list and case name, are need to evalute the open loop response and calculate 
+            AEP. These variables are evaluated in RunFast(), but since we are skipping that step, we need to get 
+            these values that are stored for previous iterations
+            """
+            # get case details
+            print('Saving case details!')
+            with open(self.case_detail_file,'rb') as handle:
+                case_detail_list = pickle.load(handle)
+            
+            # make a copy
+            case_details = case_detail_list[rows].copy()
+            
+            # update
+            case_details['sim_idx'] = self.sim_idx
+            
+            # add to the list
+            case_detail_list.append(case_details)
+            
+            # save
+            with open(self.case_detail_file,'wb') as handle:
+                pickle.dump(case_detail_list,handle)
+            
+            # convert dict to class
+            LinearTurbine = dict2class(ABCD)
+            
+            # get required variables and evaluate the dlcs
+            DLCs = modopt['DLC_driver']['DLCs']
+            fix_wind_seeds = modopt['DLC_driver']['fix_wind_seeds']
+            fix_wave_seeds = modopt['DLC_driver']['fix_wave_seeds']
+            metocean = modopt['DLC_driver']['metocean_conditions']
+            cut_in = float(inputs['V_cutin'])
+            cut_out = float(inputs['V_cutout'])
+            rated = float(inputs['Vrated'])
+            ws_class = discrete_inputs['turbine_class']
+            wt_class = discrete_inputs['turbulence_class']
+            dlc_generator = DLCGenerator(cut_in, cut_out, rated, ws_class, wt_class, fix_wind_seeds, fix_wave_seeds, metocean)
+            for i_DLC in range(len(DLCs)):
+                DLCopt = DLCs[i_DLC]
+                dlc_generator.generate(DLCopt['DLC'], DLCopt)
+            
+            # obtain case details
+            case_list = case_details['case_list']
+            case_name = case_details['case_name']
+            chan_time = case_details['chan_time']
+            
+            # obtain fst_vt variables
+            fst_vt = self.init_FAST_model()
+            fst_vt = self.update_FAST_model(fst_vt, inputs, discrete_inputs)
+        
+            
+        # Set up Level 2 disturbance (simulation or DTQP)
+        if modopt['Level2']['simulation']['flag'] or modopt['Level2']['DTQP']['flag']:
+            # Extract disturbance(s)
+            level2_disturbance = []
+            for case in case_list:
+                ts_file     = TurbSimFile(case[('InflowWind','FileName_BTS')])
+                ts_file.compute_rot_avg(fst_vt['ElastoDyn']['TipRad'])
+                u_h         = ts_file['rot_avg'][0,:]
+                tt          = ts_file['t']
+                level2_disturbance.append({'Time':tt, 'Wind': u_h})
+
+        # Run linear simulation:
+
+        # Get case list, wind inputs should have already been generated
+        if modopt['Level2']['simulation']['flag']:
+    
+            if modopt['Level2']['DTQP']['flag']:
+                raise Exception('Only DTQP or simulation flag can be set to true in Level2 modeling options')
+
+            # This is going to use the last discon_in file of the linearization set as the simulation file
+            # Currently fine because openfast is executed (or not executed if overwrite=False) after the file writing
+            if 'DLL_InFile' in self.fst_vt['ServoDyn']:     # if using file inputs
+                discon_in_file = os.path.join(self.FAST_runDirectory, self.fst_vt['ServoDyn']['DLL_InFile'])
+            else:       # if using fst_vt inputs from openfast_openmdao
+                discon_in_file = os.path.join(self.FAST_runDirectory, self.lin_case_name[0] + '_DISCON.IN')
+
+            lib_name = os.path.join(os.path.dirname(os.path.realpath(__file__)),'../../local/lib/libdiscon'+lib_ext)
+
+            ss = {}
+            et = {}
+            dl = {}
+            dam = {}
+            ct = []
+            for i_dist, dist in enumerate(level2_disturbance):
+                sim_name = 'l2_sim_{}'.format(i_dist)
+                controller_int = ROSCO_ci.ControllerInterface(
+                    lib_name,
+                    param_filename=discon_in_file,
+                    DT=1/80,        # modelling input?
+                    sim_name = os.path.join(self.FAST_runDirectory,sim_name)
+                    )
+
+                l2_out, _, P_op = LinearTurbine.solve(dist,Plot=False,controller=controller_int)
+
+                output = OpenFASTOutput.from_dict(l2_out, sim_name, magnitude_channels=self.magnitude_channels)
+
+                _name, _ss, _et, _dl, _dam = self.la._process_output(output)
+                ss[_name] = _ss
+                et[_name] = _et
+                dl[_name] = _dl
+                dam[_name] = _dam
+                ct.append(l2_out)
+
+                output.df.to_pickle(os.path.join(self.FAST_runDirectory,sim_name+'.p'))
+
+                summary_stats, extreme_table, DELs, Damage = self.la.post_process(ss, et, dl, dam)
+
+        elif modopt['Level2']['DTQP']['flag']:
+
+            summary_stats, extreme_table, DELs, Damage = dtqp_wrapper(
+                LinearTurbine, 
+                level2_disturbance, 
+                self.options['opt_options'], 
+                self.fst_vt, 
+                self.la, 
+                self.magnitude_channels, 
+                self.FAST_runDirectory
+            )
+
+        # Post process regardless of level
+        self.post_process(summary_stats, extreme_table, DELs, Damage, case_list, dlc_generator, chan_time, inputs, discrete_inputs, outputs, discrete_outputs)
+        
+        # # Save AEP value to pickle file
+        # with open(self.lin_pkl_file_name, 'rb') as handle:
+        #         ABCD_list = pickle.load(handle)
+
+        # ABCD_list[self.sim_idx]['AEP'] = outputs['AEP']
+
+        # with open(self.lin_pkl_file_name, 'wb') as handle:
+        #     pickle.dump(ABCD_list, handle)
             
         # delete run directory. not recommended for most cases, use for large parallelization problems where disk storage will otherwise fill up
         if self.clean_FAST_directory:
