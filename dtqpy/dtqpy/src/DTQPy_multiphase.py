@@ -7,6 +7,7 @@ Contributor: Athul Krishna Sundarrajan (AthulKrishnaSundarrajan on Github)
 Primary Contributor: Daniel R. Herber (danielrherber on Github)
 """
 import numpy as np
+import warnings
 from dtqpy.src.DTQPy_create import DTQPy_create
 from dtqpy.src.solver.DTQPy_SOLVER import DTQPy_SOLVER
 from dtqpy.src.DTQPy_scalingLinear import DTQPy_scalingLinear
@@ -31,7 +32,9 @@ def DTQPy_multiphase(setup,opts):
     [X,F,internal,opts] = DTQPy_SOLVER(H,f,A,b,Aeq,beq,lb,ub,internal,opts)
     
     if F == None:
-        raise Exception("The optimization problem was not solved. Check log for more details")
+        print('')
+        warnings.warn("The optimization problem was not solved. Check log for more details")
+        print('')
     else:
         if setup.ScaleObjective:
             # unscale objective

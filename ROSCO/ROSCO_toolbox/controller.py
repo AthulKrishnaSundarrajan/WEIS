@@ -294,11 +294,11 @@ class Controller():
 
         # - Might want these to debug -
         self.Cp_op = Cp_op
-
+        
         # --- Minimum pitch saturation ---
         self.ps_min_bld_pitch = np.ones(len(self.pitch_op)) * self.min_pitch
         self.ps = ControllerBlocks()
-
+        
         if self.PS_Mode == 1:  # Peak Shaving
             self.ps.peak_shaving(self, turbine)
         elif self.PS_Mode == 2: # Cp-maximizing minimum pitch saturation
@@ -494,6 +494,7 @@ class ControllerBlocks():
             # Define minimum pitch angle
             f_pitch_min = interpolate.interp1d(Ct_tsr, turbine.pitch_initial_rad, kind='linear', bounds_error=False, fill_value=(turbine.pitch_initial_rad[0],turbine.pitch_initial_rad[-1]))
             pitch_min[i] = max(controller.min_pitch, f_pitch_min(Ct_max[i]))
+            
 
         controller.ps_min_bld_pitch = pitch_min
 

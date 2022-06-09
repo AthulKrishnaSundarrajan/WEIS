@@ -56,7 +56,7 @@ def DTQPy_path(YZ,internal):
             Isav = np.append(Isav,Is);Jsav = np.append(Jsav,Js);Vsav = np.append(Vsav,Vs)
             
             
-            
+          
     b = DTQPy_tmultiprod(YZ.b,auxdata,t)
     #breakpoint()
     return Isav,Jsav,Vsav,b

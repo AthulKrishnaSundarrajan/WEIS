@@ -1,6 +1,11 @@
 General:
     verbosity: False  # When set to True, the code prints to screen many infos
-
+    openfast_configuration:
+        OF_run_fst: lin
+        OF_run_dir: outputs/OLOC/EAB_sens
+        use_exe: True
+        cores: 1
+        
 WISDEM:
     RotorSE:
         flag: True
@@ -34,7 +39,7 @@ WISDEM:
         flag: True
 
 Level3: # Options for WEIS fidelity level 3 = nonlinear time domain
-    flag: True
+    flag: False
     simulation:
         DT: 0.01
         CompElast: 1
@@ -89,6 +94,22 @@ ROSCO:
     zeta_vs: 1.0
     omega_vs: 0.2
     
+Level2:
+    flag: True
+    simulation:         # could these be included in openfast options?
+        flag: False
+        TMax: 100.      # run simulations using IEC standards, could share that info
+    DTQP:
+        flag: True
+    linearization:
+        TMax: 1600.
+        DT: 0.01
+        TrimGain: 1e-4
+        TrimTol: 1e-3
+        wind_speeds: [15] #[3,4,5,6,7,8,9,10,11,12,13,15,17,19,21,23,25]
+        DOFs: ['GenDOF','TwFADOF1','PtfmPDOF']
+        NLinTimes: 3
+    
 DLC_driver:
     openfast_file_management:
         OF_run_fst: IEA15
@@ -97,8 +118,8 @@ DLC_driver:
         - DLC: "1.1"
           ws_bin_size: 10
           n_seeds: 1
-          analysis_time: 40.
-          transient_time: 5.
+          analysis_time: 100.
+          transient_time: 100.
           turbulent_wind:
               HubHt: 140
               GridHeight: 220

@@ -11,7 +11,7 @@ from weis.aeroelasticse.CaseGen_General import case_naming
 
 
 
-def dtqp_wrapper(LinearTurbine,level2_disturbances,analysis_options,fst_vt,loads_analysis,magnitude_channels,run_dir,cores=1):
+def dtqp_wrapper(LinearTurbine,level2_disturbances,analysis_options,fst_vt,loads_analysis,magnitude_channels,run_dir=None,cores=1):
 
     ''' 
     Convert weis information to DTQP and vice versa
@@ -72,7 +72,7 @@ def dtqp_wrapper(LinearTurbine,level2_disturbances,analysis_options,fst_vt,loads
             raise Exception('rotor_overspeed constraint is set, but ED GenSpeed is not a state in the LinearModel')
     else:
         desc = 'ED First time derivative of Variable speed generator DOF (internal DOF index = DOF_GeAz), rad/s'
-        dtqp_constraints[desc] = [-np.inf,(1 + 0.2) * fst_vt['DISCON_in']['PC_RefSpd'] ]
+        dtqp_constraints[desc] = [0,(1 + 0.2) * fst_vt['DISCON_in']['PC_RefSpd'] ]
         
     if control_const['Max_PtfmPitch']['flag']:
         desc = 'ED Platform pitch tilt rotation DOF (internal DOF index = DOF_P), rad'
@@ -82,14 +82,14 @@ def dtqp_wrapper(LinearTurbine,level2_disturbances,analysis_options,fst_vt,loads
             raise Exception('Max_PtfmPitch constraint is set, but ED PtfmPitch is not a state in the LinearModel')
     else:
         desc = 'ED Platform pitch tilt rotation DOF (internal DOF index = DOF_P), rad'
-        dtqp_constraints[desc] = [-np.inf,6 * np.deg2rad(1)]
+        dtqp_constraints[desc] = [-7*np.deg2rad(1),4 * np.deg2rad(1)]
         
         
     
     ### Loop throught and call DTQP for each disturbance
     case_names = case_naming(len(level2_disturbances),'oloc')
 
-    plot = False
+    plot = True
 
     dtqp_input_list = []
     

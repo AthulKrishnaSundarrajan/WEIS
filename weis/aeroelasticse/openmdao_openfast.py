@@ -527,11 +527,11 @@ class FASTLoadCases(ExplicitComponent):
             
             self.lin_idx = 0
 
-            self.case_detail_file = os.path.join(self.options['opt_options']['general']['folder_output'],'case_detail.pkl')
-            case_detail_list = []
+            # self.case_detail_file = os.path.join(self.options['opt_options']['general']['folder_output'],'case_detail.pkl')
+            # case_detail_list = []
             
-            with open(self.case_detail_file,'wb') as handle:
-                pickle.dump(case_detail_list,handle)
+            # with open(self.case_detail_file,'wb') as handle:
+            #     pickle.dump(case_detail_list,handle)
 
     def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):
         # extract modelling and analysis options
@@ -592,7 +592,7 @@ class FASTLoadCases(ExplicitComponent):
             
         #print(impl.world_comm().rank, 'Rotor_fast','start')
         sys.stdout.flush()
-        
+
         if not store_flag:
             
             # if the LM have not been evaluated, go through the normal process and obtain LM
@@ -633,19 +633,19 @@ class FASTLoadCases(ExplicitComponent):
                     pickle.dump(ABCD_list, handle)
                 
                 # store case details 
-                case_details = {
-                        'sim_idx':self.sim_idx,
-                        'case_list':None,
-                        'case_name':None,
-                        'chan_time':None
-                        }
-                with open(self.case_detail_file,'rb') as handle:
-                    case_detail_list = pickle.load(handle)
+                # case_details = {
+                #         'sim_idx':self.sim_idx,
+                #         'case_list':None,
+                #         'case_name':None,
+                #         'chan_time':None
+                #         }
+                # with open(self.case_detail_file,'rb') as handle:
+                #     case_detail_list = pickle.load(handle)
                     
-                case_detail_list.append(case_details)
+                # case_detail_list.append(case_details)
                 
-                with open(self.case_detail_file,'wb') as handle:
-                    pickle.dump(case_detail_list,handle)
+                # with open(self.case_detail_file,'wb') as handle:
+                #     pickle.dump(case_detail_list,handle)
                     
             fst_vt = self.init_FAST_model()
             
@@ -672,8 +672,8 @@ class FASTLoadCases(ExplicitComponent):
     
                 if modopt['ROSCO']['flag']:
                     fst_vt['DISCON_in'] = modopt['General']['openfast_configuration']['fst_vt']['DISCON_in']
-                    
-                    
+                   
+      
             if self.model_only == True:
                 # Write input OF files, but do not run OF
                 self.write_FAST(fst_vt, discrete_outputs)
@@ -718,22 +718,22 @@ class FASTLoadCases(ExplicitComponent):
                     with open(self.lin_pkl_file_name, 'wb') as handle:
                         pickle.dump(ABCD_list, handle)
                         
-                    print('Saving case details!')    
-                    case_details = {
-                        'sim_idx':self.sim_idx,
-                        'case_list':case_list,
-                        'case_name':case_name,
-                        'chan_time':chan_time
-                        }
+                    # print('Saving case details!')    
+                    # case_details = {
+                    #     'sim_idx':self.sim_idx,
+                    #     'case_list':case_list,
+                    #     'case_name':case_name,
+                    #     'chan_time':chan_time
+                    #     }
                         
                         
-                    with open(self.case_detail_file,'rb') as handle:
-                        case_detail_list = pickle.load(handle)
+                    # with open(self.case_detail_file,'rb') as handle:
+                    #     case_detail_list = pickle.load(handle)
                     
-                    case_detail_list[self.sim_idx] = case_details
+                    # case_detail_list[self.sim_idx] = case_details
                     
-                    with open(self.case_detail_file,'wb') as handle:
-                        pickle.dump(case_detail_list,handle)
+                    # with open(self.case_detail_file,'wb') as handle:
+                    #     pickle.dump(case_detail_list,handle)
                         
                     lin_files = glob.glob(os.path.join(self.FAST_runDirectory, '*.lin'))
                     
@@ -788,23 +788,23 @@ class FASTLoadCases(ExplicitComponent):
             AEP. These variables are evaluated in RunFast(), but since we are skipping that step, we need to get 
             these values that are stored for previous iterations
             """
-            # get case details
-            print('Saving case details!')
-            with open(self.case_detail_file,'rb') as handle:
-                case_detail_list = pickle.load(handle)
+            # # get case details
+            # print('Saving case details!')
+            # with open(self.case_detail_file,'rb') as handle:
+            #     case_detail_list = pickle.load(handle)
             
-            # make a copy
-            case_details = case_detail_list[rows].copy()
+            # # make a copy
+            # case_details = case_detail_list[rows].copy()
             
-            # update
-            case_details['sim_idx'] = self.sim_idx
+            # # update
+            # case_details['sim_idx'] = self.sim_idx
             
-            # add to the list
-            case_detail_list.append(case_details)
+            # # add to the list
+            # case_detail_list.append(case_details)
             
-            # save
-            with open(self.case_detail_file,'wb') as handle:
-                pickle.dump(case_detail_list,handle)
+            # # save
+            # with open(self.case_detail_file,'wb') as handle:
+            #     pickle.dump(case_detail_list,handle)
             
             # convert dict to class
             LinearTurbine = dict2class(ABCD)
@@ -817,21 +817,114 @@ class FASTLoadCases(ExplicitComponent):
             cut_in = float(inputs['V_cutin'])
             cut_out = float(inputs['V_cutout'])
             rated = float(inputs['Vrated'])
+            hub_height = float(inputs['hub_height'])
+            rotorD = float(inputs['Rtip'])*2.
+            PLExp = float(inputs['shearExp'])
             ws_class = discrete_inputs['turbine_class']
             wt_class = discrete_inputs['turbulence_class']
             dlc_generator = DLCGenerator(cut_in, cut_out, rated, ws_class, wt_class, fix_wind_seeds, fix_wave_seeds, metocean)
+            
             for i_DLC in range(len(DLCs)):
                 DLCopt = DLCs[i_DLC]
                 dlc_generator.generate(DLCopt['DLC'], DLCopt)
-            
-            # obtain case details
-            case_list = case_details['case_list']
-            case_name = case_details['case_name']
-            chan_time = case_details['chan_time']
+                
+            # initialize parametric inputs    
+            WindFile_type = np.zeros(dlc_generator.n_cases, dtype=int)
+            WindFile_name = [''] * dlc_generator.n_cases
+            rot_speed_initial = np.zeros(dlc_generator.n_cases)
+            pitch_initial = np.zeros(dlc_generator.n_cases)
+            WindHd = np.zeros(dlc_generator.n_cases)
+            WaveHs = np.zeros(dlc_generator.n_cases)
+            WaveTp = np.zeros(dlc_generator.n_cases)
+            WaveHd = np.zeros(dlc_generator.n_cases)
+            WaveGamma = np.zeros(dlc_generator.n_cases)
+            WaveSeed1 = np.zeros(dlc_generator.n_cases, dtype=int)
+            TMax = np.zeros(dlc_generator.n_cases)
+            TStart = np.zeros(dlc_generator.n_cases)
             
             # obtain fst_vt variables
             fst_vt = self.init_FAST_model()
             fst_vt = self.update_FAST_model(fst_vt, inputs, discrete_inputs)
+            
+            for i_case in range(dlc_generator.n_cases):
+                
+                if dlc_generator.cases[i_case].turbulent_wind:
+                    # Assign values common to all DLCs
+                    # Wind turbulence class
+                    dlc_generator.cases[i_case].IECturbc = wt_class
+                    # Reference height for wind speed
+                    dlc_generator.cases[i_case].RefHt = hub_height
+                    # Center of wind grid (TurbSim confusingly calls it HubHt)
+                    dlc_generator.cases[i_case].HubHt = hub_height
+                    # Height of wind grid, it stops 1 mm above the ground
+                    dlc_generator.cases[i_case].GridHeight = 2. * hub_height - 1.e-3
+                    # If OLAF is called, make wind grid high and big
+                    if fst_vt['AeroDyn15']['WakeMod'] == 3:
+                        dlc_generator.cases[i_case].HubHt *= 3.
+                        dlc_generator.cases[i_case].GridHeight *= 3.
+                    # Width of wind grid, same of height
+                    dlc_generator.cases[i_case].GridWidth = dlc_generator.cases[i_case].GridHeight
+                    # Power law exponent of wind shear
+                    dlc_generator.cases[i_case].PLExp = PLExp
+                    # Length of wind grids
+                    dlc_generator.cases[i_case].AnalysisTime = dlc_generator.cases[i_case].analysis_time + dlc_generator.cases[i_case].transient_time
+                
+                WindFile_type[i_case] , WindFile_name[i_case] = generate_wind_files(
+                    dlc_generator, self.FAST_namingOut, self.wind_directory, rotorD, hub_height, i_case)
+                
+                if dlc_generator.cases[i_case].turbine_status == 'operating':
+                # We have initial conditions from WISDEM
+                    if ('U' in inputs) and ('Omega' in inputs) and ('pitch' in inputs):
+                        rot_speed_initial[i_case] = np.interp(dlc_generator.cases[i_case].URef, inputs['U'], inputs['Omega'])
+                        pitch_initial[i_case] = np.interp(dlc_generator.cases[i_case].URef, inputs['U'], inputs['pitch'])
+                    else:
+                        rot_speed_initial[i_case]   = fst_vt['DISCON_in']['PC_RefSpd'] * 30 / np.pi
+                        pitch_initial[i_case]       = 15
+                else:
+                    rot_speed_initial[i_case] = 0.
+                    pitch_initial[i_case] = 90.
+                    
+                # Wave inputs to HydroDyn
+                WindHd[i_case] = dlc_generator.cases[i_case].wind_heading
+                WaveHs[i_case] = dlc_generator.cases[i_case].wave_height
+                WaveTp[i_case] = dlc_generator.cases[i_case].wave_period
+                WaveHd[i_case] = dlc_generator.cases[i_case].wave_heading
+                WaveGamma[i_case] = dlc_generator.cases[i_case].wave_gamma
+                WaveSeed1[i_case] = dlc_generator.cases[i_case].wave_seed1
+                TMax[i_case] = dlc_generator.cases[i_case].analysis_time + dlc_generator.cases[i_case].transient_time
+                TStart[i_case] = dlc_generator.cases[i_case].transient_time
+            
+            # Parameteric inputs
+            case_inputs = {}
+            # Main fst
+            case_inputs[("Fst","TMax")] = {'vals':TMax, 'group':1}
+            case_inputs[("Fst","TStart")] = {'vals':TStart, 'group':1}
+            # Inflow wind
+            case_inputs[("InflowWind","WindType")] = {'vals':WindFile_type, 'group':1}
+            case_inputs[("InflowWind","FileName_BTS")] = {'vals':WindFile_name, 'group':1}
+            case_inputs[("InflowWind","Filename_Uni")] = {'vals':WindFile_name, 'group':1}
+            case_inputs[("InflowWind","RefLength")] = {'vals':[rotorD], 'group':0}
+            case_inputs[("InflowWind","PropagationDir")] = {'vals':WindHd, 'group':1}
+            # Initial conditions for rotor speed and pitch
+            case_inputs[("ElastoDyn","RotSpeed")] = {'vals':rot_speed_initial, 'group':1}
+            case_inputs[("ElastoDyn","BlPitch1")] = {'vals':pitch_initial, 'group':1}
+            case_inputs[("ElastoDyn","BlPitch2")] = case_inputs[("ElastoDyn","BlPitch1")]
+            case_inputs[("ElastoDyn","BlPitch3")] = case_inputs[("ElastoDyn","BlPitch1")]
+            # Inputs to HydroDyn
+            case_inputs[("HydroDyn","WaveHs")] = {'vals':WaveHs, 'group':1}
+            case_inputs[("HydroDyn","WaveTp")] = {'vals':WaveTp, 'group':1}
+            case_inputs[("HydroDyn","WaveDir")] = {'vals':WaveHd, 'group':1}
+            case_inputs[("HydroDyn","WavePkShp")] = {'vals':WaveGamma, 'group':1}
+            case_inputs[("HydroDyn","WaveSeed1")] = {'vals':WaveSeed1, 'group':1}
+    
+            # Append current DLC to full list of cases
+            case_list, case_name = CaseGen_General(case_inputs, self.FAST_runDirectory, self.FAST_InputFile)
+                # obtain case details
+            # case_list = case_details['case_list']
+            # case_name = case_details['case_name']
+            chan_time = []
+            
+            
         
             
         # Set up Level 2 disturbance (simulation or DTQP)

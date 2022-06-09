@@ -116,6 +116,7 @@ def run_wisdem(fname_wt_input, fname_modeling_options, fname_opt_options, overri
         # needing to modify the yaml files.
         if overridden_values is not None:
             for key in overridden_values:
+                breakpoint()
                 wt_opt[key] = overridden_values[key]
 
         # Place the last design variables from a previous run into the problem.

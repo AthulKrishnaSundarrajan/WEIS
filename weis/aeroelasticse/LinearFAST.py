@@ -138,7 +138,7 @@ class LinearFAST(runFAST_pywrapper_batch):
             rosco_inputs = ROSCO_utilities.read_DISCON(self.fst_vt['ServoDyn']['DLL_InFile'])
         else:       # if using fst_vt inputs from openfast_openmdao
             rosco_inputs = self.fst_vt['DISCON_in']
-
+        
         # TODO: check this in below rated wind_speeds
         k_opt           = rosco_inputs['VS_Rgn2K']/ (30 / np.pi)**2  # openfast units
         omega_rated_rpm = rosco_inputs['PC_RefSpd'] * 30 / np.pi * .9  # rpm, include slip percent

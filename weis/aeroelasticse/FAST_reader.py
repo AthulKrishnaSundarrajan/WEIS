@@ -1361,7 +1361,7 @@ class InputReader_OpenFAST(object):
         # Read the Bladed style Interface controller input file, intended for ROSCO https://github.com/NREL/ROSCO_toolbox
 
         discon_in_file = os.path.normpath(os.path.join(self.FAST_directory, self.fst_vt['ServoDyn']['DLL_InFile']))
-
+       
         if os.path.exists(discon_in_file):
 
             # Read DISCON infiles

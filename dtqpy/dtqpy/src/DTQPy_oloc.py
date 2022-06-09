@@ -30,14 +30,14 @@ def ModelClipping(Aw,Bw,Cw,Dw,xw,u_h):
     nl = len(u_h)
     
     # find the models with pp > 6 deg
-    ind_clip = np.rad2deg(xw[0,:]) > 6 
+    ind_clip = np.rad2deg(xw[0,:]) > 7 
     
     ind_original = np.arange(nl)
     
     if ind_clip.any():
         
         # fixing index
-        ind_fix = ind_original[ind_clip][0]-1
+        ind_fix = ind_original[ind_clip][-1]+1
         
         # clip models
         for ind in range(nl):
@@ -50,7 +50,7 @@ def ModelClipping(Aw,Bw,Cw,Dw,xw,u_h):
                 Dw[ind,:,:] = Dw[ind_fix,:,:]
                 
                 xw[:,ind] = xw[:,ind_fix]
-                
+    
     # get shape            
     nl,nx,nu = np.shape(Bw)
     
@@ -181,35 +181,36 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,plot=False):
     Aw,Bw,Cw,Dw,xw,ws = ModelClipping(Aw, Bw, Cw, Dw, xw, ws)
     
     # get shape
-    nw,nx,nu = np.shape(Bw)
+    nw,nx,nu = np.shape(Bw); ny = len(DescOutput)
  
     # construct LPV models
+    exp = True
     # A matrix   
-    A_op_pp = PchipInterpolator(ws, Aw, axis = 0)
+    A_op_pp = PchipInterpolator(ws, Aw, axis = 0,extrapolate = True)
     A_op = lambda w: A_op_pp(w)
 
     # Bmatrix
-    B_op_pp = PchipInterpolator(ws, Bw, axis = 0)
+    B_op_pp = PchipInterpolator(ws, Bw, axis = 0,extrapolate = True)
     B_op = lambda w: B_op_pp(w)
 
     # Cmatrix
-    C_op_pp = PchipInterpolator(ws,Cw,axis = 0)
+    C_op_pp = PchipInterpolator(ws,Cw,axis = 0,extrapolate = True)
     C_op = lambda w: C_op_pp(w)
 
     # Dmatrix
-    D_op_pp = PchipInterpolator(ws,Dw,axis = 0)
+    D_op_pp = PchipInterpolator(ws,Dw,axis = 0,extrapolate = True)
     D_op = lambda w: D_op_pp(w)
 
     # control operating points
-    Uo_pp = PchipInterpolator(ws,uw,axis = 1)
+    Uo_pp = PchipInterpolator(ws,uw,axis = 1,extrapolate = True)
     Uo_fun = lambda w: Uo_pp(w)
 
     # state operating points
-    Xo_pp = PchipInterpolator(ws, xw, axis = 1)
+    Xo_pp = PchipInterpolator(ws, xw, axis = 1,extrapolate = True)
     Xo_fun = lambda w: Xo_pp(w)
 
     # outputs
-    Yo_pp = PchipInterpolator(ws, yw, axis = 1)
+    Yo_pp = PchipInterpolator(ws, yw, axis = 1,extrapolate = True)
     Yo_fun = lambda w: Yo_pp(w)
     
     # get state indices
@@ -245,10 +246,9 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,plot=False):
         
     
     opts = options()
-
-    opts.dt.nt = 1000
+    opts.dt.nt = 2500
     opts.solver.tolerence = 1e-6
-    opts.solver.maxiters = 100
+    opts.solver.maxiters = 200
     opts.solver.function = 'ipopt'
 
     time = np.linspace(tt[0],tt[-1],opts.dt.nt)
@@ -303,7 +303,7 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,plot=False):
         
         # upper limit
         
-        b_max = [6000,35000] #,35000
+        b_max = [5000,35000] #,35000
         
         # create constraints
         
@@ -357,7 +357,7 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,plot=False):
     for i in range(nx):
         UBx[i,0] = BuildLambdaUB(ub[i],indexat,Xo_fun,W_fun,i)
         LBx[i,0] = BuildLambdaUB(lb[i],indexat,Xo_fun,W_fun,i)
-
+    
     # control bounds
     UBc = np.array([[lambda t: W_fun(t)-W_fun(t)],
                     [lambda t: max(uw[1,:])-GT_fun(W_fun(t))],
@@ -410,9 +410,10 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,plot=False):
     L = [LQ_objective() for n in range(6)]
 
     # uRu
+    w1 = 1e-7
     L[lx].left = 1
     L[lx].right = 1
-    L[lx].matrix = np.diag([0,R1,R2])
+    L[lx].matrix = w1*np.diag([0,R1,R2])
     
 
     lx = lx+1
@@ -420,30 +421,31 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,plot=False):
     L[lx].left = 2;
     L[lx].right = 2;
     L1 = np.zeros((nx,nx))
-    L1[iPtfmPitch,iPtfmPitch] = -1e9
+    L1[iPtfmPitch,iPtfmPitch] = 1
     L[lx].matrix = L1
     
+    
     lx = lx+1
-
+    w2 = 1e-8
     # uPX
     L[lx].left = 1
     L[lx].right = 2
-    Lmat = np.zeros((nu,nx)); Lmat[iGenTorque,iGenSpeed] = -1
+    Lmat = np.zeros((nu,nx)); Lmat[iGenTorque,iGenSpeed] = -1*w2
     L[lx].matrix = Lmat
 
     lx = lx+1
-
+    
     L[lx].left = 0;
     L[lx].right = 1
     L2mat = np.zeros((1,nu),dtype = 'O')
-    L2mat[0,iGenTorque] = lambda t: GSn_fun(W_fun(t))
+    L2mat[0,iGenTorque] = lambda t: w2*GSn_fun(W_fun(t))
     L[lx].matrix = L2mat
 
     lx = lx+1
     L[lx].left = 0
     L[lx].right = 2
     L3mat = np.zeros((1,nx),dtype = 'O')
-    L3mat[0,iGenSpeed] = lambda t: GTn_fun(W_fun(t))
+    L3mat[0,iGenSpeed] = lambda t: w2*GTn_fun(W_fun(t))
     L[lx].matrix = L3mat
 
     lx = lx+1
@@ -451,7 +453,7 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,plot=False):
     L[lx].left = 0
     L[lx].right = 0
     L4mat = np.empty((1,1),dtype = 'O')
-    L4mat[0,0] = lambda t: GP_fun(W_fun(t))
+    L4mat[0,0] = lambda t: w2*GP_fun(W_fun(t))
     L[lx].matrix = L4mat
 
     # scaling
@@ -474,36 +476,42 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,plot=False):
     
     # scaling is not needed for osqp
     if opts.solver.function == 'ipopt':
-        s.ScaleObjective = True
+        s.ScaleObjective = False
         s.Scaling = scale
     
     # solve
     [T,Ul,Xl,P,F,internal,opts] = DTQPy_solve(s,opts)
-
-    # calculate offset
-    Xo_off = np.squeeze(Xo_fun(W_fun(T))).T 
-    Uo_off = np.squeeze(Uo_fun(W_fun(T))).T 
-    Yo_off = np.squeeze(Yo_fun(W_fun(T))).T
-
-    # Add offset to estimated states
-    X =  Xl + Xo_off
-    U = Ul + Uo_off
     
-    # Compute output 
-    yl = np.zeros((opts.dt.nt,np.shape(yw)[0]))
-    for i in range(len(T)):
-        t = T[i,0]
-        w = W_fun(t)
+    if F == None :
+        X = Xl
+        Xo_off = np.squeeze(Xo_fun(W_fun(T))).T 
+        U = Ul
+        Y = np.zeros((opts.dt.nt,ny))
+    else:    
+        # calculate offset
+        Xo_off = np.squeeze(Xo_fun(W_fun(T))).T 
+        Uo_off = np.squeeze(Uo_fun(W_fun(T))).T 
+        Yo_off = np.squeeze(Yo_fun(W_fun(T))).T
+    
+        # Add offset to estimated states
+        X =  Xl + Xo_off
+        U = Ul + Uo_off
         
-        C = C_op(w)
-        D = D_op(w)
-        
-        xl = Xl[i,:]
-        ul = Ul[i,:]
-        
-        yl[i,:] = np.squeeze(np.dot(C,xl.T) + np.dot(D,ul.T)) 
-        
-    Y = yl + Yo_off
+        # Compute output 
+        yl = np.zeros((opts.dt.nt,ny))
+        for i in range(len(T)):
+            t = T[i,0]
+            w = W_fun(t)
+            
+            C = C_op(w)
+            D = D_op(w)
+            
+            xl = Xl[i,:]
+            ul = Ul[i,:]
+            
+            yl[i,:] = np.squeeze(np.dot(C,xl.T) + np.dot(D,ul.T)) 
+            
+        Y = yl + Yo_off
     Qty_p = 'SrvD GenPwr, (kW)'
     Yindp = DescOutput.index(Qty_p)
     
@@ -539,7 +547,8 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,plot=False):
         ax1.plot(T,np.rad2deg(X[:,iPtfmPitch]))
         ax1.set_xlim([t0,tf])
         ax1.set_title('Ptfm Pitch [deg]')
-
+        ax1.hlines(np.rad2deg(ub[iPtfmPitch]),xmin = t0, xmax = tf,color = 'k')
+        ax1.hlines(6,xmin = t0, xmax = tf,color = 'r')
         # FenSpeed
         ax2.plot(T,X[:,iGenSpeed])
         ax2.set_xlim([t0,tf])
@@ -551,27 +560,37 @@ def DTQPy_oloc(LinearModels,disturbance,constraints,plot=False):
         
         fig2.subplots_adjust(hspace = 0.65)
         
-        if OutputCon_flag:
+        # if OutputCon_flag:
             
-            n_con = len(Qty)
+        #     n_con = len(Qty)
             
-            fig3,ax = plt.subplots(n_con,1)
+        #     fig3,ax = plt.subplots(n_con,1)
             
-            for i in range(n_con):    
-                if n_con == 1:
-                    Yind = DescOutput.index(Qty[i])
-                    ax.plot(T,Y[:,Yind])
-                    ax.set_xlim([t0,tf])
-                    ax.set_title(Qty[i])
-                    ax.hlines(b[i],xmin = t0, xmax = tf,color = 'k')
-                else:   
-                    Yind = DescOutput.index(Qty[i])
-                    ax[i].plot(T,Y[:,Yind])
-                    ax[i].set_xlim([t0,tf])
-                    ax[i].set_title(Qty[i])
-                    ax[i].hlines(b_max[i],xmin = t0, xmax = tf,color = 'k')
-            fig3.subplots_adjust(hspace = 0.65)
-
+        #     for i in range(n_con):    
+        #         if n_con == 1:
+        #             Yind = DescOutput.index(Qty[i])
+        #             ax.plot(T,Y[:,Yind])
+        #             ax.set_xlim([t0,tf])
+        #             ax.set_title(Qty[i])
+        #             ax.hlines(b[i],xmin = t0, xmax = tf,color = 'k')
+        #         else:   
+        #             Yind = DescOutput.index(Qty[i])
+        #             ax[i].plot(T,Y[:,Yind])
+        #             ax[i].set_xlim([t0,tf])
+        #             ax[i].set_title(Qty[i])
+        #             ax[i].hlines(b_max[i],xmin = t0, xmax = tf,color = 'k')
+        #     fig3.subplots_adjust(hspace = 0.65)
+            
+        fig4,ax4 = plt.subplots(1)
+        
+        #ppU = np.rad2deg(UBx[iPtfmPitch,0](T))
+        ppO = np.rad2deg(Xo_off[:,iPtfmPitch])
+        #ax4.plot(T,ppU,'r',label = 'PtfmPitch UB')
+        ax4.plot(T,ppO,label = 'PtfmPitch OP')
+        ax4.plot(T,np.rad2deg(X[:,iPtfmPitch]),'k',label = 'PtfmPitch')
+        ax4.set_ylabel('PtfmPitch [deg]')
+        ax4.set_xlabel('Time [s]')
+        ax4.legend() 
         plt.show()
     
     return T,U,X,Y

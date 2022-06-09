@@ -13,14 +13,23 @@ from pyoptsparse.pyOpt_MPI import myMPI
 from mpi4py import MPI
 from scipy import sparse
 
-
 import argparse
-
 import numpy as np
 
+def _convert2COO(H,f,A,b,Aeq,beq):
+    
+    # convert the matrices from csr,csc -> coo
+    H = H.tocoo();f = f.tocoo()
+    A = A.tocoo();b = b.tocoo();
+    Aeq = Aeq.tocoo(); beq = beq.tocoo()
+    
+    return H,f,A,b,Aeq,beq
 
 def DTQPy_SOLVER_ipopt(H,f,A,b,Aeq,beq,lb,ub,internal,opts):
     
+    
+    # convert matrices to coo
+    H,f,A,b,Aeq,beq = _convert2COO(H, f, A, b, Aeq, beq)
     
     # obtain solver preferences
     solver = opts.solver
@@ -93,7 +102,7 @@ def DTQPy_SOLVER_ipopt(H,f,A,b,Aeq,beq,lb,ub,internal,opts):
 
         # initialize problem   
         prob = PyOptSp_wrapper(H =H, f = f, A = A,b = b,Aeq = Aeq,beq = beq,lb = lb,ub = ub,internal = internal)
-
+        
         # solver preferences
         optProb = Optimization("DTQPy",prob.ObjFun,comm = myMPI().COMM_WORLD)
         
@@ -144,8 +153,11 @@ def DTQPy_SOLVER_ipopt(H,f,A,b,Aeq,beq,lb,ub,internal,opts):
     internal.output = inform["text"]
     
     # extract optimal objective function value
-    if EXITFLAG < -1:
+    if EXITFLAG < 0:
         F = None
+        
+        if EXITFLAG == -1:
+            X = np.zeros((nx,))
     else:
         F = sol.fStar
     

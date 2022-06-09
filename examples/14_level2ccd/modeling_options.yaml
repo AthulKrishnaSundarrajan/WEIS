@@ -97,6 +97,21 @@ Level3: # Options for WEIS fidelity level 3 = nonlinear time domain
         PotFile: examples/01_aeroelasticse/OpenFAST_models/IEA-15-240-RWT/IEA-15-240-RWT-UMaineSemi/HydroData/IEA-15-240-RWT-UMaineSemi        # relative to WEIS
 ROSCO:
     flag: True
+    SD_Mode: 0
+    PS_Mode: 1
+    ps_percent: 0.85
+    F_LPFType: 2
+    F_NotchType: 2
+    Fl_Mode: 2 
+    tuning_yaml: ROSCO/Tune_Cases/IEA15MW.yaml
+    zeta_pc: [1]
+    omega_pc: [0.2]
+    U_pc: [12]
+    zeta_vs: 0.85                     # Torque controller desired damping ratio [-]
+    omega_vs: 0.12  
+    twr_freq: 3.2
+    ptfm_freq: 0.2
+    Kp_float: -10
 
 Level2:
     flag: True
@@ -110,7 +125,7 @@ Level2:
         DT: 0.01
         TrimGain: 1e-4
         TrimTol: 1e-3
-        wind_speeds: [15] #[3,4,5,6,7,8,9,10,11,12,13,15,17,19,21,23,25]
+        wind_speeds: [15] 
         DOFs: ['GenDOF','TwFADOF1','PtfmPDOF']
         NLinTimes: 3
 
@@ -123,10 +138,10 @@ DLC_driver:
     DLCs:
         - DLC: "1.1"
           ws_bin_size: 2
-          wind_speed: [14,15,16] #[5.8, 9.4732, 13.009,16.866,19.9968,15.6765] 
+          wind_speed: [14,15,16] #[4., 6., 8., 10., 12., 14., 16., 18., 20., 22., 24.]
           wave_height: [8.]
           wave_period: [2.]
-          #wind_seeds: [3,4] #[1,2,3,4,5]
+          #wind_seeds: [1,2,3,4,5,6,7]
           n_seeds: 1
           analysis_time: 700.
           transient_time: 100.

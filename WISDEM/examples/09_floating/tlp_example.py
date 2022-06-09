@@ -5,7 +5,7 @@ import openmdao.api as om
 from wisdem.commonse import fileIO
 from wisdem.floatingse import FloatingSE
 
-plot_flag = False  # True
+plot_flag = True
 opt_flag = False
 
 npts = 5

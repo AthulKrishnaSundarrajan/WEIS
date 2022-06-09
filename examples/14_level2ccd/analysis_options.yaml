@@ -1,5 +1,5 @@
 general:
-    folder_output: outputs/L2_studies
+    folder_output: outputs/bandaid_debug
     fname_output: iea15mw
     
 design_variables:
@@ -11,7 +11,7 @@ design_variables:
                   lower_bound: 36.
                   upper_bound: 66.
         members:
-            flag: False
+            flag: True
             groups:
                 - names: [main_column]
                   ballast:
@@ -49,7 +49,8 @@ constraints:
       max: 0.2
     Max_PtfmPitch:
       flag: False
-      max: 6
+      max: 4
+      min: -6
 
 merit_figure: LCOE
 
@@ -57,12 +58,12 @@ driver:
   optimization:
     flag: True     # Flag to enable optimization
     solver: LN_COBYLA
-    max_iter: 100
+    max_iter: 1
   design_of_experiments:
-    flag: False          # Flag to enable design of experiments
+    flag: False         # Flag to enable design of experiments
     run_parallel: True    # Flag to run using parallel processing
     generator: FullFact   # Type of input generator. (Uniform)
-    num_samples: 5      # number of samples for (Uniform only)
+    num_samples: 6      # number of samples for (Uniform only)
 
 recorder:
     flag: True             # Flag to activate OpenMDAO recorder
