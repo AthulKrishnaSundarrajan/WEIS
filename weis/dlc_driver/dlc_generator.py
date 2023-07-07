@@ -993,6 +993,7 @@ class DLCGenerator(object):
     def generate_12p1(self, options):
         # Pass through uniform wind input
         metocean = self.get_metocean(options)
+
         idlc = DLCInstance(options=options)
         idlc.label = '12.1'
         idlc.IEC_WindType = 'Custom'
@@ -1001,6 +1002,9 @@ class DLCGenerator(object):
             idlc.analysis_time = options['analysis_time']
         if options['transient_time'] >= 0:
             idlc.transient_time = options['transient_time']
+
+        idlc.wave_height = options['wave_height'][0]
+        idlc.wave_period = options['wave_period'][0]
 
         self.cases.append(idlc)
 

@@ -297,7 +297,7 @@ class Controller():
         A_vs = A[0:len(v_below_rated)]          # below rated
         A_pc = A[-len(v_above_rated)+1:]     # above rated
         B_tau = B_tau * np.ones(len(v))
-
+        
         # Resample omega_ and zeta_pc at above rated wind speeds
         if not list_check(self.omega_pc) and not list_check(self.zeta_pc):
             self.omega_pc_U = self.omega_pc * np.ones(len(v_above_rated[1:]))

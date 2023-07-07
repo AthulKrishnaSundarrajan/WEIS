@@ -1496,7 +1496,7 @@ class InputWriter_OpenFAST(object):
             if type(self.fst_vt['HydroDyn']['AddF0'][j]) == float:
                 ln = '{:14}   '.format(self.fst_vt['HydroDyn']['AddF0'][j])  
             elif type(self.fst_vt['HydroDyn']['AddF0'][j]) in [list, np.ndarray]:
-                ln = '{:14}   '.format(' '.join([f'{val}' for val in self.fst_vt['HydroDyn']['AddF0'][j]]))
+                ln = '{:14}   '.format(' '.join([f'{val}' for val in self.fst_vt['HydroDyn']['AddF0'][j][0]]))
             else:
                 raise Exception("Check type of self.fst_vt['HydroDyn']['AddF0']")
             

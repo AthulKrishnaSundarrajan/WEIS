@@ -102,8 +102,8 @@ class WindTurbineOntologyPythonWEIS(WindTurbineOntologyPython):
                         self.modeling_options['Level1']['flag'] = True
                         self.modeling_options["Level3"]["HydroDyn"]["PotFile"] = osp.join(cwd, bemDir,'Output','Wamit_format','Buoy')
                         
-
                     else:
+
                         if self.modeling_options['Level1']['runPyHAMS']:
                             print('Found existing potential model: {}\n    - Trying to use this instead of running PyHAMS.'.format(potpath))
                             self.modeling_options['Level1']['runPyHAMS'] = False
