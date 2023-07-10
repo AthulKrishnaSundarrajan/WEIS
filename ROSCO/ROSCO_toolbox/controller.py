@@ -198,7 +198,10 @@ class Controller():
         rated_rotor_speed = turbine.rated_rotor_speed               # Rated rotor speed (rad/s)
 
         # ------------- Saturation Limits --------------- #
-        turbine.max_torque = turbine.rated_torque * self.controller_params['max_torque_factor']
+        if self.VS_ControlMode == 4:
+            turbine.max_torque = turbine.rated_torque * 1.5 # If using fixed pitch vsriable speed controller in the above rated region, set max toruq to be 1.5 times rated torque
+        else:
+            turbine.max_torque = turbine.rated_torque * self.controller_params['max_torque_factor']
 
         # -------------Define Operation Points ------------- #
         TSR_rated = rated_rotor_speed*R/turbine.v_rated  # TSR at rated
@@ -280,7 +283,7 @@ class Controller():
         Pi_wind         = 1/2 * rho * Ar * v**2 * dCt_dTSR * dlambda_dv + rho * Ar * v * Ct_op
 
         # Second order system coefficients
-        if self.VS_ControlMode in [0,2]: # Constant torque above rated
+        if self.VS_ControlMode in [0,2,4]: # Constant torque above rated
             A = dtau_domega/J
         else:                            # Constant power above rated
             A = dtau_domega/J 
