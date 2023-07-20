@@ -199,7 +199,7 @@ class Controller():
 
         # ------------- Saturation Limits --------------- #
         if self.VS_ControlMode == 4:
-            turbine.max_torque = turbine.rated_torque * 1.5 # If using fixed pitch vsriable speed controller in the above rated region, set max toruq to be 1.5 times rated torque
+            turbine.max_torque = turbine.rated_torque * 1.5 # If using fixed pitch variable speed controller in the above rated region, set max torque to be 1.5x rated torque
         else:
             turbine.max_torque = turbine.rated_torque * self.controller_params['max_torque_factor']
 
@@ -378,22 +378,26 @@ class Controller():
         if self.Fl_Mode >= 1: # Floating feedback
             # If we haven't set Kp_float as a control parameter
             if self.tune_Fl:
-                Kp_float = (dtau_dv/dtau_dbeta) * Ng 
+                Kp_float = (dtau_dv/dtau_dbeta) * Ng
                 if self.Fl_Mode == 2:
                     Kp_float *= turbine.TowerHt      
                 f_kp     = interpolate.interp1d(v,Kp_float)
                 self.Kp_float = f_kp(turbine.v_rated * (1.05))   # get Kp at v_rated + 0.5 m/s
 
             # Turn on the notch filter if floating
-            self.F_NotchType = 2
-            
+            #self.F_NotchType = 2
+            # if self.F_NotchType == 0:  # If notch filter is disabled, then turn it on
+            #     self.F_NotchType = 2
+            # elif self.F_NotchType == 1: #
+            #     self.F_NotchType = 3
+
             # And check for .yaml input inconsistencies
             if self.twr_freq == 0.0 or self.ptfm_freq == 0.0:
                 print('WARNING: twr_freq and ptfm_freq should be defined for floating turbine control!!')
             
         else:
             self.Kp_float = 0.0
-        
+
         # Flap actuation 
         if self.Flp_Mode >= 1:
             self.flp_angle = 0.0
