@@ -1933,6 +1933,9 @@ class FASTLoadCases(ExplicitComponent):
                 if ('U' in inputs) and ('Omega' in inputs) and ('pitch' in inputs):
                     rot_speed_initial[i_case] = np.interp(dlc_generator.cases[i_case].URef, inputs['U'], inputs['Omega'])
                     pitch_initial[i_case] = np.interp(dlc_generator.cases[i_case].URef, inputs['U'], inputs['pitch'])
+                elif modopt['flags']['marine_hydro']:
+                    rot_speed_initial[i_case]   = (fst_vt['DISCON_in']['PC_RefSpd'] * 30 / np.pi / fst_vt['ElastoDyn']['GBRatio'])/2
+                    pitch_initial[i_case]       = 7
                 else:
                     rot_speed_initial[i_case]   = fst_vt['DISCON_in']['PC_RefSpd'] * 30 / np.pi / fst_vt['ElastoDyn']['GBRatio']
                     pitch_initial[i_case]       = 15
