@@ -1566,7 +1566,7 @@ class InputReader_OpenFAST(object):
 
             # Some additional filename parsing
             self.fst_vt['DISCON_in']['PerfFileName'] = os.path.abspath(os.path.join(self.FAST_directory, self.fst_vt['DISCON_in']['PerfFileName']))
-
+            print(self.fst_vt['DISCON_in']['PerfFileName'])
             # Try to read rotor performance data if it is available
             try:
                 pitch_vector, tsr_vector, Cp_table, Ct_table, Cq_table = load_from_txt(self.fst_vt['DISCON_in']['PerfFileName'])
