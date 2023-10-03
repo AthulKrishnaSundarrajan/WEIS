@@ -24,6 +24,14 @@ def calculate_MSE(x1,x2):
     
     return MSE
 
+def calculate_time(DFSM):
+    
+    sampling_time = DFSM.sampling_time/60
+    construction_time = (DFSM.linear_construct_time + DFSM.nonlin_construct_time)/60
+    simulation_time = DFSM.simulation_time/60
+    
+    return {'sampling_time':sampling_time,'construction_time':construction_time,'simulation_time':simulation_time}
+
 def calculate_SNE(x1,x2):
     
     '''
