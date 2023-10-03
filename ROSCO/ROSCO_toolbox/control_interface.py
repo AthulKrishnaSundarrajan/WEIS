@@ -78,14 +78,14 @@ class ControllerInterface():
         self.avrSWAP[26] = 10 # HARD CODE initial wind speed = 10 m/s
         
         # Blade pitch initial conditions
-        self.avrSWAP[3]     = 9.244 * np.deg2rad(1)
-        self.avrSWAP[32]    = 9.244 * np.deg2rad(1)
-        self.avrSWAP[33]    = 9.244 * np.deg2rad(1)
+        self.avrSWAP[3]     = 0 * np.deg2rad(1)
+        self.avrSWAP[32]    = 0 * np.deg2rad(1)
+        self.avrSWAP[33]    = 0 * np.deg2rad(1)
 
         self.avrSWAP[27] = 1  # IPC
         
         # Torque initial condition
-        self.avrSWAP[22]    = 8.3033*1000
+        self.avrSWAP[22]    = 0
 
         # Code this as first call
         self.avrSWAP[0] = 0
@@ -172,11 +172,6 @@ class ControllerInterface():
             self.avrSWAP[82] = turbine_state['NacIMU_FA_Acc']
         except KeyError:
             self.avrSWAP[82] = 0
-            
-        try:
-            self.avrSWAP[53] = turbine_state['FA_Acc']
-        except KeyError:
-            self.avrSWAP[53] = 0
 
         # call controller
         self.call_discon()
@@ -320,6 +315,7 @@ class farm_zmq_server():
 
     def send_setpoints(self, genTorques=None, nacelleHeadings=None,
                        bladePitchAngles=None):
+
         '''
         Send setpoints to DLL via zmq server for farm level controls
 

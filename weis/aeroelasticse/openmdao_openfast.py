@@ -17,7 +17,6 @@ from wisdem.floatingse.floating_frame import NULL, NNODES_MAX, NELEM_MAX
 from weis.dlc_driver.dlc_generator    import DLCGenerator
 from weis.aeroelasticse.CaseGen_General import CaseGen_General
 from functools import partial
-from pCrunch import PowerProduction
 from weis.aeroelasticse.LinearFAST import LinearFAST
 from weis.control.LinearModel import LinearTurbineModel, LinearControlModel
 from weis.aeroelasticse import FileTools
@@ -589,10 +588,6 @@ class FASTLoadCases(ExplicitComponent):
                 fst_vt['AeroDyn15']['TwrCb'] = [fst_vt['AeroDyn15']['TwrCb']] * len(fst_vt['AeroDyn15']['TwrElev'])
 
             # Fix AddF0: Should be a n x 1 array (list of lists):
-
-            # if fst_vt['HydroDyn']:
-            #     fst_vt['HydroDyn']['AddF0'] = [[F0] for F0 in fst_vt['HydroDyn']['AddF0']]
-
             if fst_vt['HydroDyn'] and fst_vt['HydroDyn']['NBodyMod'] == 1:
                 fst_vt['HydroDyn']['AddF0'] = [[F0] for F0 in fst_vt['HydroDyn']['AddF0']]
 
@@ -1390,6 +1385,7 @@ class FASTLoadCases(ExplicitComponent):
                 
             elif modopt['flags']['floating']:
                 joints_xyz = np.empty((0, 3))
+                axial_coeffs = np.empty((0, 3))
                 N1 = np.array([], dtype=np.int_)
                 N2 = np.array([], dtype=np.int_)
                 d_coarse = np.array([])
@@ -1407,7 +1403,7 @@ class FASTLoadCases(ExplicitComponent):
                     xyz0 = inputs[f"member{k}:joint1"]
                     xyz1 = inputs[f"member{k}:joint2"]
                     dxyz = xyz1 - xyz0
-                    inode_xyz = np.outer(s_coarse, dxyz) + xyz0[np.newaxis, :]
+                    inode_xyz = np.r_[[xyz0],[xyz1]]   #  old way: np.outer(s_coarse, dxyz) + xyz0[np.newaxis, :], OpenFAST doesn't want all these joints if they don't make new memebers
                     inode_range = np.arange(inode_xyz.shape[0] - 1)
 
                     nk = joints_xyz.shape[0]
@@ -1416,6 +1412,37 @@ class FASTLoadCases(ExplicitComponent):
                     d_coarse = np.append(d_coarse, np.mean(id_coarse))  # OpenFAST only wants one thickness
                     t_coarse = np.append(t_coarse, np.mean(it_coarse))  # OpenFAST only wants one thickness
                     joints_xyz = np.append(joints_xyz, inode_xyz, axis=0)
+
+                    joint_1_orig_index = modopt['floating']['joints']['name2idx'][modopt['floating']['members']['joint1'][k]]
+                    joint_2_orig_index = modopt['floating']['joints']['name2idx'][modopt['floating']['members']['joint2'][k]]
+                    
+                    # may need to check if joint is in original list, axial joints will not be
+                    if modopt['floating']['members']['joint1'][k] in modopt['floating']['joints']['name'] and \
+                        modopt['floating']['members']['joint2'][k] in modopt['floating']['joints']['name'] :
+
+                        i_axial_coeff_1 = [
+                            modopt['floating']['joints']['axial_coeffs'][joint_1_orig_index]['Cd'],
+                            modopt['floating']['joints']['axial_coeffs'][joint_1_orig_index]['Ca'],
+                            modopt['floating']['joints']['axial_coeffs'][joint_1_orig_index]['Cp']
+                        ]
+
+                        i_axial_coeff_2 = [
+                            modopt['floating']['joints']['axial_coeffs'][joint_2_orig_index]['Cd'],
+                            modopt['floating']['joints']['axial_coeffs'][joint_2_orig_index]['Ca'],
+                            modopt['floating']['joints']['axial_coeffs'][joint_2_orig_index]['Cp']
+                        ]
+                    else:
+                        # not originally defined
+                        i_axial_coeff_1 = np.zeros(3)
+                        i_axial_coeff_2 = np.zeros(3)
+
+
+                    i_axial_coeffs = np.r_[[i_axial_coeff_1],[i_axial_coeff_2]]
+
+                    axial_coeffs = np.append(axial_coeffs,i_axial_coeffs, axis = 0)
+
+
+
                     
             if modopt['flags']['offshore']:
                 fst_vt['HydroDyn']['WtrDens'] = float(inputs['rho_water'])
@@ -1436,11 +1463,18 @@ class FASTLoadCases(ExplicitComponent):
                 if np.any(BQuad):
                     logger.warning('WARNING: You are adding in additional drag terms that may double count strip theory estimated viscous drag terms.  Please zero out the BQuad entries or use modeling options SimplCd/a/p and/or potential_model_override and/or potential_bem_members to suppress strip theory for the members')
                 fst_vt['HydroDyn']['AddBQuad'] = BQuad
-                fst_vt['HydroDyn']['NAxCoef'] = 1
-                fst_vt['HydroDyn']['AxCoefID'] = 1 + np.arange( fst_vt['HydroDyn']['NAxCoef'], dtype=np.int_)
-                fst_vt['HydroDyn']['AxCd'] = np.zeros( fst_vt['HydroDyn']['NAxCoef'] )
-                fst_vt['HydroDyn']['AxCa'] = np.zeros( fst_vt['HydroDyn']['NAxCoef'] )
-                fst_vt['HydroDyn']['AxCp'] = np.ones( fst_vt['HydroDyn']['NAxCoef'] )
+                if modopt['flags']['floating']:
+                    fst_vt['HydroDyn']['NAxCoef'] = axial_coeffs.shape[0]
+                    fst_vt['HydroDyn']['AxCoefID'] = 1 + np.arange( fst_vt['HydroDyn']['NAxCoef'], dtype=np.int_)
+                    fst_vt['HydroDyn']['AxCd'] = axial_coeffs[:,0]
+                    fst_vt['HydroDyn']['AxCa'] = axial_coeffs[:,1]
+                    fst_vt['HydroDyn']['AxCp'] = axial_coeffs[:,2]
+                else:
+                    fst_vt['HydroDyn']['NAxCoef'] = 1
+                    fst_vt['HydroDyn']['AxCoefID'] = 1 + np.arange( fst_vt['HydroDyn']['NAxCoef'], dtype=np.int_)
+                    fst_vt['HydroDyn']['AxCd'] = np.zeros( fst_vt['HydroDyn']['NAxCoef'] )
+                    fst_vt['HydroDyn']['AxCa'] = np.zeros( fst_vt['HydroDyn']['NAxCoef'] )
+                    fst_vt['HydroDyn']['AxCp'] = np.zeros( fst_vt['HydroDyn']['NAxCoef'] )
                 # Use coarse member nodes for HydroDyn
 
                     
@@ -1468,7 +1502,7 @@ class FASTLoadCases(ExplicitComponent):
                 fst_vt['HydroDyn']['MPropSetID1'] = fst_vt['HydroDyn']['MPropSetID2'] = imembers
                 fst_vt['HydroDyn']['MDivSize'] = 0.5*np.ones( fst_vt['HydroDyn']['NMembers'] )
                 fst_vt['HydroDyn']['MCoefMod'] = np.ones( fst_vt['HydroDyn']['NMembers'], dtype=np.int_)
-                fst_vt['HydroDyn']['JointAxID'] = np.ones( fst_vt['HydroDyn']['NJoints'], dtype=np.int_)
+                fst_vt['HydroDyn']['JointAxID'] = fst_vt['HydroDyn']['AxCoefID']  # joints and axial coeffs should be 1 to 1
                 fst_vt['HydroDyn']['JointOvrlp'] = np.zeros( fst_vt['HydroDyn']['NJoints'], dtype=np.int_)
                 fst_vt['HydroDyn']['NCoefDpth'] = 0
                 fst_vt['HydroDyn']['NCoefMembers'] = 0
@@ -1548,9 +1582,9 @@ class FASTLoadCases(ExplicitComponent):
             fst_vt['MoorDyn']['Name'] = fst_vt['MAP']['LineType'] = line_names
             fst_vt['MoorDyn']['Diam'] = fst_vt['MAP']['Diam'] = inputs["line_diameter"]
             fst_vt['MoorDyn']['MassDen'] = fst_vt['MAP']['MassDenInAir'] = inputs["line_mass_density"]
-            fst_vt['MoorDyn']['EA'] = inputs["line_stiffness"]  / 4  # Hack for now
+            fst_vt['MoorDyn']['EA'] = inputs["line_stiffness"] 
             fst_vt['MoorDyn']['EI'] = np.ones(n_lines) * 0.8 # also hack for now    # MoorPy does not have EI, yet
-            fst_vt['MoorDyn']['BA_zeta'] = -1*np.ones(n_lines, dtype=np.int64)
+            fst_vt['MoorDyn']['BA_zeta'] = -0.8*np.ones(n_lines, dtype=np.int64)
             fst_vt['MoorDyn']['Ca'] = inputs["line_transverse_added_mass"]
             fst_vt['MoorDyn']['CaAx'] = inputs["line_tangential_added_mass"]
             fst_vt['MoorDyn']['Cd'] = inputs["line_transverse_drag"]
@@ -1713,7 +1747,7 @@ class FASTLoadCases(ExplicitComponent):
         channels_out += ["Spn1MLxb3", "Spn2MLxb3", "Spn3MLxb3", "Spn4MLxb3", "Spn5MLxb3", "Spn6MLxb3", "Spn7MLxb3", "Spn8MLxb3", "Spn9MLxb3"]
         channels_out += ["Spn1MLyb3", "Spn2MLyb3", "Spn3MLyb3", "Spn4MLyb3", "Spn5MLyb3", "Spn6MLyb3", "Spn7MLyb3", "Spn8MLyb3", "Spn9MLyb3"]
         channels_out += ["RtFldCp", "RtFldCt"]
-        channels_out += ["RotSpeed", "GenSpeed", "NacYaw", "Azimuth","YawBrTDxp","YawBrTAxp"]
+        channels_out += ["RotSpeed", "GenSpeed", "NacYaw", "Azimuth"]
         channels_out += ["GenPwr", "GenTq", "BldPitch1", "BldPitch2", "BldPitch3"]
         channels_out += ["Wind1VelX", "Wind1VelY", "Wind1VelZ"]
         channels_out += ["RtVAvgxh", "RtVAvgyh", "RtVAvgzh"]
@@ -1729,7 +1763,8 @@ class FASTLoadCases(ExplicitComponent):
         channels_out += ["RotThrust", "LSShftFxs", "LSShftFys", "LSShftFzs", "LSShftFxa", "LSShftFya", "LSShftFza"]
         channels_out += ["RotTorq", "LSSTipMxs", "LSSTipMys", "LSSTipMzs", "LSSTipMxa", "LSSTipMya", "LSSTipMza"]
         channels_out += ["B1N1Alpha", "B1N2Alpha", "B1N3Alpha", "B1N4Alpha", "B1N5Alpha", "B1N6Alpha", "B1N7Alpha", "B1N8Alpha", "B1N9Alpha", "B2N1Alpha", "B2N2Alpha", "B2N3Alpha", "B2N4Alpha", "B2N5Alpha", "B2N6Alpha", "B2N7Alpha", "B2N8Alpha","B2N9Alpha"]
-        channels_out += ["PtfmSurge", "PtfmSway", "PtfmHeave", "PtfmRoll", "PtfmPitch", "PtfmYaw","NcIMURAys","YawBrTAxp"]
+        channels_out += ["PtfmSurge", "PtfmSway", "PtfmHeave", "PtfmRoll", "PtfmPitch", "PtfmYaw"]
+        channels_out += ["NcIMUTAxs","NcIMUTAys","NcIMUTAzs","NcIMURAxs","NcIMURAys","NcIMURAzs"]
         if self.n_blades == 3:
             channels_out += ["TipDxc3", "TipDyc3", "TipDzc3", "RootMxc3", "RootMyc3", "RootMzc3", "TipDxb3", "TipDyb3", "TipDzb3", "RootMxb3",
                              "RootMyb3", "RootMzb3", "RootFxc3", "RootFyc3", "RootFzc3", "RootFxb3", "RootFyb3", "RootFzb3", "BldPitch3"]
@@ -1933,9 +1968,6 @@ class FASTLoadCases(ExplicitComponent):
                 if ('U' in inputs) and ('Omega' in inputs) and ('pitch' in inputs):
                     rot_speed_initial[i_case] = np.interp(dlc_generator.cases[i_case].URef, inputs['U'], inputs['Omega'])
                     pitch_initial[i_case] = np.interp(dlc_generator.cases[i_case].URef, inputs['U'], inputs['pitch'])
-                elif modopt['flags']['marine_hydro']:
-                    rot_speed_initial[i_case]   = (fst_vt['DISCON_in']['PC_RefSpd'] * 30 / np.pi / fst_vt['ElastoDyn']['GBRatio'])/2
-                    pitch_initial[i_case]       = 7
                 else:
                     rot_speed_initial[i_case]   = fst_vt['DISCON_in']['PC_RefSpd'] * 30 / np.pi / fst_vt['ElastoDyn']['GBRatio']
                     pitch_initial[i_case]       = 15
@@ -2089,7 +2121,7 @@ class FASTLoadCases(ExplicitComponent):
         fatigue_channels =  dict( fastwrap.fatigue_channels_default )
 
         # Nacelle accelleration
-        magnitude_channels['NcIMUTA'] = ['NcIMUTAxs','NcIMUTAzs','NcIMUTAzs']
+        magnitude_channels['NcIMUTA'] = ['NcIMUTAxs','NcIMUTAys','NcIMUTAzs']
 
         # Blade fatigue: spar caps at the root (upper & lower?), TE at max chord
         # Convert ultstress and S_intercept values to kPa with 1e-3 factor
@@ -2231,9 +2263,9 @@ class FASTLoadCases(ExplicitComponent):
             outputs = self.get_monopile_loading(summary_stats, extreme_table, inputs, outputs)
 
         # If DLC 1.1 not used, calculate_AEP will just compute average power of simulations
-        outputs, discrete_outputs = self.calculate_AEP(summary_stats, case_list, dlc_generator, discrete_inputs, outputs, discrete_outputs)
+        outputs, discrete_outputs = self.calculate_AEP(summary_stats, case_list, dlc_generator, inputs, discrete_inputs, outputs, discrete_outputs)
 
-        outputs, discrete_outputs = self.get_weighted_DELs(dlc_generator, DELs, damage, discrete_inputs, outputs, discrete_outputs)
+        outputs, discrete_outputs = self.get_weighted_DELs(dlc_generator, DELs, damage, inputs, discrete_inputs, outputs, discrete_outputs)
         
         outputs, discrete_outputs = self.get_control_measures(summary_stats, chan_time, inputs, discrete_inputs, outputs, discrete_outputs)
 
@@ -2486,7 +2518,7 @@ class FASTLoadCases(ExplicitComponent):
 
         return outputs
 
-    def calculate_AEP(self, sum_stats, case_list, dlc_generator, discrete_inputs, outputs, discrete_outputs):
+    def calculate_AEP(self, sum_stats, case_list, dlc_generator, inputs, discrete_inputs, outputs, discrete_outputs):
         """
         Calculates annual energy production of the relevant DLCs in `case_list`.
 
@@ -2511,7 +2543,15 @@ class FASTLoadCases(ExplicitComponent):
 
         # Calculate AEP and Performance Data
         if len(U) > 1 and self.fst_vt['Fst']['CompServo'] == 1:
-            pp = PowerProduction(discrete_inputs['turbine_class'])
+            user_dist = self.options['modeling_options']['DLC_driver']['metocean_conditions']['user_probability']
+            
+            pp = PowerProduction(**{
+                'turbine_class': discrete_inputs['turbine_class'],
+                'cut_in': float(inputs['V_cutin']), 
+                'cut_out':float(inputs['V_cutout']), 
+                'MHK': self.options['modeling_options']['flags']['marine_hydro'],
+                'user_dist': user_dist
+            })
             pwr_curve_vars   = ["GenPwr", "RtFldCp", "RotSpeed", "BldPitch1"]
             AEP, perf_data = pp.AEP(stats_pwrcrv, U, pwr_curve_vars)
 
@@ -2546,7 +2586,7 @@ class FASTLoadCases(ExplicitComponent):
 
         return outputs, discrete_outputs
 
-    def get_weighted_DELs(self, dlc_generator, DELs, damage, discrete_inputs, outputs, discrete_outputs):
+    def get_weighted_DELs(self, dlc_generator, DELs, damage, inputs, discrete_inputs, outputs, discrete_outputs):
         modopt = self.options['modeling_options']
 
         # See if we have fatigue DLCs
@@ -2566,7 +2606,13 @@ class FASTLoadCases(ExplicitComponent):
         
         # Get wind distribution probabilities, make sure they are normalized
         # This should also take care of averaging across seeds
-        pp = PowerProduction(discrete_inputs['turbine_class'])
+        pp = PowerProduction(**{
+                'turbine_class': discrete_inputs['turbine_class'],
+                'cut_in': float(inputs['V_cutin']), 
+                'cut_out':float(inputs['V_cutout']), 
+                'MHK': self.options['modeling_options']['flags']['marine_hydro'],
+                'user_dist': self.options['modeling_options']['DLC_driver']['metocean_conditions']['user_probability']
+            })
         ws_prob = pp.prob_WindDist(U, disttype='pdf')
         ws_prob /= ws_prob.sum()
 
@@ -2689,7 +2735,7 @@ class FASTLoadCases(ExplicitComponent):
             # TODO: weight based on WS distribution, or something else
             outputs['Std_PtfmPitch'] = np.mean(sum_stats['PtfmPitch']['std'])
 
-        outputs['Max_PtfmPitch']  = np.max(sum_stats['PtfmPitch']['max'])
+        outputs['Max_PtfmPitch']  = np.max(np.abs(np.r_[sum_stats['PtfmPitch']['max'],sum_stats['PtfmPitch']['min']]))
 
         # Max platform offset        
         for timeseries in chan_time:

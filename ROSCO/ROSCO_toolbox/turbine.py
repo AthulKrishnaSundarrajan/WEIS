@@ -198,6 +198,7 @@ class Turbine():
         else:
             self.rotor_performance_filename = 'Cp_Ct_Cq.txt'
 
+
         # Grab general turbine parameters
         self.TipRad             = fast.fst_vt['ElastoDyn']['TipRad']
         self.Rhub               = fast.fst_vt['ElastoDyn']['HubRad']

@@ -47,7 +47,7 @@ if platform.system() == 'Windows':
 elif platform.system() == 'Darwin':
     lib_name = os.path.join(this_dir, '../ROSCO/build/libdiscon.dylib')
 else:
-    lib_name = os.path.join('/home/athulsun/WEIS-AKS/local/lib','libdiscon.so')
+    lib_name = os.path.join(this_dir, '../ROSCO/build/libdiscon.so')
 
 # # Load turbine model from saved pickle
 turbine         = ROSCO_turbine.Turbine
@@ -55,7 +55,7 @@ turbine         = turbine.load(os.path.join(example_out_dir,'01_NREL5MW_saved.p'
 # controller      = ROSCO_controller.Controller(controller_params)
 
 # Load turbine data from OpenFAST and rotor performance text file
-cp_filename = os.path.join(tune_dir,path_params['FAST_directory'],path_params['rotor_performance_filename'])
+cp_filename = os.path.join(tune_dir,path_params['rotor_performance_filename'])
 turbine.load_from_fast(
     path_params['FAST_InputFile'],
     os.path.join(tune_dir,path_params['FAST_directory']),
@@ -84,7 +84,7 @@ sim_1 = ROSCO_sim.Sim(turbine,controller_int)
 # Define a wind speed history
 dt = 0.025
 tlen = 1000      # length of time to simulate (s)
-ws0 = 14         # initial wind speed (m/s)
+ws0 = 7         # initial wind speed (m/s)
 t= np.arange(0,tlen,dt) 
 ws = np.ones_like(t) * ws0
 # add steps at every 100s
@@ -92,20 +92,20 @@ for i in range(len(t)):
     ws[i] = ws[i] + t[i]//100
 
 # Run simulator and plot results
-sim_1.sim_ws_series(t,ws,rotor_rpm_init=4,controller_int = controller_int)
+sim_1.sim_ws_series(t,ws,rotor_rpm_init=4)
 
 # Load controller library again to see if we deallocated properly
-#controller_int = ROSCO_ci.ControllerInterface(lib_name,param_filename=param_filename,sim_name='sim_2')
+controller_int = ROSCO_ci.ControllerInterface(lib_name,param_filename=param_filename,sim_name='sim_2')
 
-# # Run simulator again and plot results
-# sim_2 = ROSCO_sim.Sim(turbine,controller_int)
-# sim_2.sim_ws_series(t,ws,rotor_rpm_init=4)
+# Run simulator again and plot results
+sim_2 = ROSCO_sim.Sim(turbine,controller_int)
+sim_2.sim_ws_series(t,ws,rotor_rpm_init=4)
 
-# # Check if simulations are equal
-# np.testing.assert_almost_equal(sim_1.gen_speed,sim_2.gen_speed)
+# Check if simulations are equal
+np.testing.assert_almost_equal(sim_1.gen_speed,sim_2.gen_speed)
 
-# if False:
-#   plt.show()
-# else:
-#   plt.savefig(os.path.join(example_out_dir,'04_NREL5MW_SimpSim.png'))
+if False:
+  plt.show()
+else:
+  plt.savefig(os.path.join(example_out_dir,'04_NREL5MW_SimpSim.png'))
 

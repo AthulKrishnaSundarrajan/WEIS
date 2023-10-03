@@ -357,7 +357,7 @@ class RAFT_OMDAO(om.ExplicitComponent):
         # set up design
         design = {}
         design['type'] = ['input dictionary for RAFT']
-        design['name'] = ['spiderfloat']
+        design['name'] = [f"weis_{analysis_options['general']['fname_output']}"]
         design['comments'] = ['none']
         
         design['settings'] = {}
@@ -639,7 +639,8 @@ class RAFT_OMDAO(om.ExplicitComponent):
             model.preprocess_HAMS(dw=dwFAST, wMax=wMaxFAST0, dz=dzFAST, da=daFAST)  
         
         # option to run level 1 load cases
-        if True: #processCases:
+        if modeling_opt['analyze_cases']: 
+            modeling_opt['runPyHAMS'] = False
             model.analyzeCases(runPyHAMS=modeling_opt['runPyHAMS'], meshDir=modeling_opt['BEM_dir'])
             
         # get and process results
@@ -649,33 +650,52 @@ class RAFT_OMDAO(om.ExplicitComponent):
         for i in range(len(outs)):
             if outs[i][0].startswith('properties_'):
                 name = outs[i][0].split('properties_')[1]
-                outputs['properties_'+name] = results['properties'][name]
+                if name in results['properties']:
+                    outputs['properties_'+name] = results['properties'][name]
+                else:
+                    print(f'RAFT Warning: {name} property was not computed')
+            '''
+            Note: dynamic results should be taken from results['case metrics']
             elif outs[i][0].startswith('response_'):
                 name = outs[i][0].split('response_')[1]
-                if np.iscomplex(results['response'][name]).any():
-                    outputs['response_'+name] = np.abs(results['response'][name])
                 else:
+                    print(f'RAFT Warning: {name} not in responses')
+
                     outputs['response_'+name] = results['response'][name]
+            '''
+
+        if modeling_opt['analyze_cases']: 
+            # Pattern matching for case-by-case outputs
+            names = ['surge','sway','heave','roll','pitch','yaw','AxRNA','Mbase','omega','torque','power','bPitch','Tmoor']
+            stats = ['avg','std','max','PSD','DEL']
+            case_mask = np.array(case_mask)
+            for n in names:
+                for s in stats:
+                    if s == 'DEL' and not n in ['Tmoor','Mbase']: continue
+                    iout = f'{n}_{s}'
+                    if n != 'Tmoor':
+                        # use only first rotor/turbine
+                        outputs['stats_'+iout][case_mask] = np.squeeze(results['case_metrics'][0][iout])
+                    else:
+                        outputs['stats_'+iout][case_mask] = np.squeeze(results['case_metrics'][iout])
 
 
-        # Pattern matching for case-by-case outputs
-        names = ['surge','sway','heave','roll','pitch','yaw','AxRNA','Mbase','omega','torque','power','bPitch','Tmoor']
-        stats = ['avg','std','max','PSD','DEL']
-        case_mask = np.array(case_mask)
-        for n in names:
-            for s in stats:
-                if s == 'DEL' and not n in ['Tmoor','Mbase']: continue
-                iout = f'{n}_{s}'
-                # need to squeeze this because raft makes some outputs 2D for multiple rotors, we only support 1 right now
-                outputs['stats_'+iout][case_mask] = np.squeeze(results['case_metrics'][iout])
+            # Other case outputs
+            for n in ['wind_PSD','wave_PSD']:
+                outputs['stats_'+n][case_mask,:] = results['case_metrics'][0][n]
 
-        # Other case outputs
-        for n in ['wind_PSD','wave_PSD']:
-            outputs['stats_'+n][case_mask,:] = results['case_metrics'][n]
+            # Compute some aggregate outputs manually
+            outputs['Max_Offset'] = np.sqrt(outputs['stats_surge_max'][case_mask]**2 + outputs['stats_sway_max'][case_mask]**2).max()
+            outputs['heave_avg'] = outputs['stats_heave_avg'][case_mask].mean()
+            outputs['Max_PtfmPitch'] = outputs['stats_pitch_max'][case_mask].max()
+            outputs['Std_PtfmPitch'] = outputs['stats_pitch_std'][case_mask].mean()
+            outputs['max_nac_accel'] = outputs['stats_AxRNA_std'][case_mask].max()
+            outputs['rotor_overspeed'] = (outputs['stats_omega_max'][case_mask].max() - inputs['rated_rotor_speed']) / inputs['rated_rotor_speed']
+            outputs['max_tower_base'] = outputs['stats_Mbase_max'][case_mask].max()
 
         # natural periods
         model.solveEigen()
-        outputs["rigid_body_periods"] = 1/results['eigen']['frequencies']
+        outputs["rigid_body_periods"] = 1/model.results['eigen']['frequencies']
 
         outputs["surge_period"] = outputs["rigid_body_periods"][0]
         outputs["sway_period"] = outputs["rigid_body_periods"][1]
@@ -684,15 +704,6 @@ class RAFT_OMDAO(om.ExplicitComponent):
         outputs["pitch_period"] = outputs["rigid_body_periods"][4]
         outputs["yaw_period"] = outputs["rigid_body_periods"][5]
 
-        # Compute some aggregate outputs manually
-        outputs['Max_Offset'] = np.sqrt(outputs['stats_surge_max'][case_mask]**2 + outputs['stats_sway_max'][case_mask]**2).max()
-        outputs['heave_avg'] = outputs['stats_heave_avg'][case_mask].mean()
-        outputs['Max_PtfmPitch'] = outputs['stats_pitch_max'][case_mask].max()
-        outputs['Std_PtfmPitch'] = outputs['stats_pitch_std'][case_mask].mean()
-        outputs['max_nac_accel'] = outputs['stats_AxRNA_std'][case_mask].max()
-        outputs['rotor_overspeed'] = (outputs['stats_omega_max'][case_mask].max() - inputs['rated_rotor_speed']) / inputs['rated_rotor_speed']
-        outputs['max_tower_base'] = outputs['stats_Mbase_max'][case_mask].max()
-        
         # Combined outputs for OpenFAST
         outputs['platform_displacement'] = model.fowtList[0].V
         outputs["platform_total_center_of_mass"] = outputs['properties_substructure CG']

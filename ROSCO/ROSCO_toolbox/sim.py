@@ -49,7 +49,7 @@ class Sim():
         self.turbine = turbine
         self.controller_int = controller_int
 
-    def sim_ws_series(self, t_array, ws_array,controller_int, rotor_rpm_init=10, init_pitch=0.0,
+    def sim_ws_series(self, t_array, ws_array, rotor_rpm_init=10, init_pitch=0.0,
                       wd_array=None, yaw_init=0.0,
                       make_plots=True):
         '''
@@ -137,7 +137,7 @@ class Sim():
             turbine_state['Y_MeasErr'] = nac_yawerr[i-1]
 
             # Define outputs
-            gen_torque[i], bld_pitch[i], nac_yawrate[i] = controller_int.call_controller(turbine_state)
+            gen_torque[i], bld_pitch[i], nac_yawrate[i] = self.controller_int.call_controller(turbine_state)
 
             # Calculate the power
             gen_power[i] = gen_speed[i] * gen_torque[i] * self.turbine.GenEff / 100
@@ -145,7 +145,7 @@ class Sim():
             # Calculate the nacelle position
             nac_yaw[i] = nac_yaw[i-1] + nac_yawrate[i] * dt
 
-        controller_int.kill_discon()
+        self.controller_int.kill_discon()
 
         # Save these values
         self.bld_pitch = bld_pitch
@@ -169,10 +169,10 @@ class Sim():
                 ax.set_ylabel('Wind Speed (m/s)')
                 ax.grid()
                 ax = axarr[1]
-                ax.plot(self.t_array, self.gen_torque, label='WindDirection')
-                #ax.plot(self.t_array, self.nac_yaw * 180/np.pi, label='NacelleAngle')
-                #ax.legend(loc='best')
-                ax.set_ylabel('GenTq')
+                ax.plot(self.t_array, self.wd_array * 180/np.pi, label='WindDirection')
+                ax.plot(self.t_array, self.nac_yaw * 180/np.pi, label='NacelleAngle')
+                ax.legend(loc='best')
+                ax.set_ylabel('Angle(deg)')
                 ax.set_xlabel('Time (s)')
                 ax.grid()
                 ax = axarr[2]

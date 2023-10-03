@@ -34,29 +34,29 @@ turbine = ROSCO_turbine.Turbine(turbine_params)
 turbine.load_from_fast(
     path_params['FAST_InputFile'],
     os.path.join(tune_dir,path_params['FAST_directory']),
-    rot_source='txt',txt_filename=os.path.join(tune_dir,path_params['FAST_directory'],path_params['rotor_performance_filename'])
+    rot_source='txt',txt_filename=os.path.join(tune_dir,path_params['rotor_performance_filename'])
     )
 
 # Print some basic turbine info
 print(turbine)
 
-# # Save the turbine model
-# example_out_dir = os.path.join(this_dir,'examples_out')
-# if not os.path.isdir(example_out_dir):
-#   os.makedirs(example_out_dir)
+# Save the turbine model
+example_out_dir = os.path.join(this_dir,'examples_out')
+if not os.path.isdir(example_out_dir):
+  os.makedirs(example_out_dir)
 
-# turbine.save(os.path.join(example_out_dir,'01_NREL5MW_saved.p'))
+turbine.save(os.path.join(example_out_dir,'01_NREL5MW_saved.p'))
 
-# # Now load the turbine and plot the Cp surface
+# Now load the turbine and plot the Cp surface
 
-# # Load quick from python pickle
-# turbine = turbine.load(os.path.join(example_out_dir,'01_NREL5MW_saved.p'))
+# Load quick from python pickle
+turbine = turbine.load(os.path.join(example_out_dir,'01_NREL5MW_saved.p'))
 
-# # plot rotor performance 
-# print('Plotting Cp data')
-# turbine.Cp.plot_performance()
+# plot rotor performance 
+print('Plotting Cp data')
+turbine.Cp.plot_performance()
 
-# if False:
-#   plt.show()
-# else:
-#   plt.savefig(os.path.join(example_out_dir,'01_NREL5MW_Cp.png'))
+if False:
+  plt.show()
+else:
+  plt.savefig(os.path.join(example_out_dir,'01_NREL5MW_Cp.png'))
