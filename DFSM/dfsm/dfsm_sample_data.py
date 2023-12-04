@@ -102,8 +102,9 @@ def sample_data(data,sampling_type,n_samples,grouping = 'together'):
             else:
                 model_inputs_ = np.hstack([model_inputs,state_derivatives])
             
-            inputs_max = abs(np.max(model_inputs_,0))
+            inputs_max = np.max(abs(model_inputs_),0)
             model_inputs_ = model_inputs_/inputs_max
+            
             
             # perform kmeans clustering algorithm
             kmeans = KMeans(n_clusters = n_samples,n_init = 10).fit(X = model_inputs_)

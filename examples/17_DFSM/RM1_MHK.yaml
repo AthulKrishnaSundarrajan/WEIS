@@ -28,9 +28,9 @@ controller_params:
   # Controller flags 
   LoggingLevel:       0                     # {0: write no debug files, 1: write standard output .dbg-file, 2: write standard output .dbg-file and complete avrSWAP-array .dbg2-file
   F_LPFType:          1                     # {1: first-order low-pass filter, 2: second-order low-pass filter}, [rad/s] (currently filters generator speed and pitch control signals)
-  F_NotchType:        1                     # Notch filter on generator speed and/or tower fore-aft motion (for floating) {0: disable, 1: generator speed, 2: tower-top fore-aft motion, 3: generator speed and tower-top fore-aft motion}
+  F_NotchType:        3                     # Notch filter on generator speed and/or tower fore-aft motion (for floating) {0: disable, 1: generator speed, 2: tower-top fore-aft motion, 3: generator speed and tower-top fore-aft motion}
   IPC_ControlMode:    0                     # Turn Individual Pitch Control (IPC) for fatigue load reductions (pitch contribution) {0: off, 1: 1P reductions, 2: 1P+2P reductions}
-  VS_ControlMode:     2                     # Generator torque control mode in above rated conditions {0: constant torque, 1: constant power, 2: TSR tracking PI control}
+  VS_ControlMode:     3                     # Generator torque control mode in above rated conditions {0: constant torque, 1: constant power, 2: TSR tracking PI control}
   PC_ControlMode:     1                     # Blade pitch control mode {0: No pitch, fix to fine pitch, 1: active PI blade pitch control}
   Y_ControlMode:      0                     # Yaw control mode {0: no yaw control, 1: yaw rate control, 2: yaw-by-IPC}
   SS_Mode:            1                     # Setpoint Smoother mode {0: no setpoint smoothing, 1: introduce setpoint smoothing}
@@ -42,8 +42,8 @@ controller_params:
   # Controller parameters 
   U_pc:               [2.3,2.5]
   interp_type:        sigma
-  zeta_pc:            [0.7,0.7]                   # Pitch controller desired damping ratio [-]
-  omega_pc:           [0.9,0.9]                   # Pitch controller desired natural frequency [rad/s]
+  zeta_pc:            [0.67,0.92]                   # Pitch controller desired damping ratio [-]
+  omega_pc:           [0.94,1.55]                   # Pitch controller desired natural frequency [rad/s]
   zeta_vs:            0.7                   # Torque controller desired damping ratio [-]
   omega_vs:           0.7                   # Torque controller desired natural frequency [rad/s]
   twr_freq:           3.3404                # Tower natural frequency [rad/s]  # 0.4499 (old value) 3.3404(new value)
@@ -55,9 +55,14 @@ controller_params:
   Kp_float:           -0.3897
   max_torque_factor:  1.5
   DISCON:
-    F_LPFCornerFreq:  15.008  # 2P
-    GS_notch_n: 1
-    F_NotchCornerFreq_GS: [2.42] #0.918518
-    TTM_notch_n: 1
-    F_NotchCornerFreq_TTM: [2.42] #0.918518
+    F_NumNotchFilts:  1 
+    F_NotchFreqs:  [2.4200]  # 2P
+    F_NotchBetaNum: [0.0]
+    F_NotchBetaDen: [0.25]
+    F_GenSpdNotch_N: 1
+    F_GenSpdNotch_Ind: [1]
+    F_TwrTopNotch_N: 1
+    F_TwrTopNotch_Ind: [1]
+    F_NotchCornerFreq_GS: [2.42] 
     F_FlHighPassFreq: 1.5
+    F_LPFCornerFreq: 15.0

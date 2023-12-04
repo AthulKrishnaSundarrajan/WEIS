@@ -9,7 +9,7 @@ def load_rosco_yaml(finput):
 
 
 if __name__=='__main__':
-    fname = '/Users/dzalkind/Tools/ROSCO/Tune_Cases/NREL5MW.yaml'
+    fname = '/home/athulsun/WEIS-AKS/ROSCO/Tune_Cases/NREL5MW.yaml'
     new_input = load_rosco_yaml(fname)
     
     print('here')

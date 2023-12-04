@@ -28,7 +28,7 @@ controller_params:
   # Controller flags 
   LoggingLevel:       2                     # {0: write no debug files, 1: write standard output .dbg-file, 2: write standard output .dbg-file and complete avrSWAP-array .dbg2-file
   F_LPFType:          1                     # {1: first-order low-pass filter, 2: second-order low-pass filter}, [rad/s] (currently filters generator speed and pitch control signals)
-  F_NotchType:        1                     # Notch filter on generator speed and/or tower fore-aft motion (for floating) {0: disable, 1: generator speed, 2: tower-top fore-aft motion, 3: generator speed and tower-top fore-aft motion}
+  F_NotchType:        3                     # Notch filter on generator speed and/or tower fore-aft motion (for floating) {0: disable, 1: generator speed, 2: tower-top fore-aft motion, 3: generator speed and tower-top fore-aft motion}
   IPC_ControlMode:    0                     # Turn Individual Pitch Control (IPC) for fatigue load reductions (pitch contribution) {0: off, 1: 1P reductions, 2: 1P+2P reductions}
   VS_ControlMode:     3                     # Generator torque control mode in above rated conditions {0: constant torque, 1: constant power, 2: TSR tracking PI control}
   VS_ConstPower:     1                     # Generator torque control mode in above rated conditions {0: constant torque, 1: constant power, 2: TSR tracking PI control}
@@ -56,13 +56,12 @@ controller_params:
   Kp_float:           -0.3897
   max_torque_factor:  1.5
   DISCON:
-    F_NumNotchFilts:  2 
-    F_NotchFreqs:  [1.0, 2.4200]  # 2P
-    F_NotchBetaNum: [0.0, 0.0]
-    F_NotchBetaDen: [0.25, 0.25]
-    F_GenSpdNotch_N: 2
-    F_GenSpdNotch_Ind: [1,2]
-    F_TwrTopNotch_N: 2
-    F_TwrTopNotch_Ind: [1,2]
-    F_NotchCornerFreq_GS: [2.42] 
+    F_NumNotchFilts:  1 
+    F_NotchFreqs:  [2.4200]  # 2P
+    F_NotchBetaNum: [0.0]
+    F_NotchBetaDen: [0.25]
+    F_GenSpdNotch_N: 1
+    F_GenSpdNotch_Ind: [1]
+    F_TwrTopNotch_N: 1
+    F_TwrTopNotch_Ind: [1]
     F_FlHighPassFreq: 1.5

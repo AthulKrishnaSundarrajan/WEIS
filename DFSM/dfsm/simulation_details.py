@@ -8,7 +8,8 @@ import time as timer
 
 class SimulationDetails:
     
-    def __init__(self,OF_output_files,reqd_states,reqd_controls,reqd_outputs,scale_args = {},filter_args = {},add_dx2 = True,tmin = 0,tmax = None):
+    def __init__(self,OF_output_files,reqd_states,reqd_controls,reqd_outputs,scale_args = {}
+                 ,filter_args = {},add_dx2 = True,tmin = 0,tmax = None,linear_model_file = None,region = None):
         
         # initialize
         self.OF_output_files = OF_output_files
@@ -20,6 +21,8 @@ class SimulationDetails:
         self.add_dx2 = add_dx2
         self.tmin = tmin
         self.tmax = tmax 
+        self.linear_model_file = linear_model_file
+        self.region = region
         
         # get number of simulations
         self.n_sim = len(OF_output_files)
@@ -231,7 +234,28 @@ class SimulationDetails:
 
                 #self.reqd_states = self.reqd_states + dx_names
                 
-            
+            # find index of genspeed
+            try:
+                self.gen_speed_ind = self.reqd_states.index('GenSpeed')
+                
+            except ValueError:
+                self.gen_speed_ind = None
+                
+            # find index of FA_Acc
+            try:
+                self.FA_Acc_ind = self.reqd_states.index('YawBrTAxp')
+                
+            except ValueError:
+                self.FA_Acc_ind = None
+                
+            # find index of genspeed
+            try:
+                self.NacIMU_FA_Acc_ind = self.reqd_states.index('NcIMURAys')
+                
+            except ValueError:
+                self.NacIMU_FA_Acc_ind = None
+                
+                
             # initialize storage dict
             sim_detail = {'sim_idx': sim_idx,
                          'n_states': self.n_states,
@@ -248,7 +272,8 @@ class SimulationDetails:
                         'state_derivatives': state_derivatives,
                         'dx_names':dx_names,
                         'nt': len(time),
-                        'time': time}
+                        'time': time
+                      }
             
             FAST_sim.append(sim_detail)
             

@@ -15,21 +15,21 @@ if __name__ == '__main__':
     mydir = os.path.dirname(os.path.realpath(__file__))
     
     # datapath
-    datapath = mydir + os.sep + 'outputs' + os.sep + 'MHK'
+    datapath = mydir + os.sep + 'outputs' + os.sep + 'MHK_TR'
     
     # get the entire path
     outfiles = [os.path.join(datapath,f) for f in os.listdir(datapath) if valid_extension(f)]
     outfiles = sorted(outfiles)
     
     # required states
-    reqd_states = ['GenSpeed']
-    reqd_controls = ['RtVAvgxh','GenTq','BldPitch1']
+    reqd_states = ['PtfmPitch','GenSpeed','YawBrTAxp']
+    reqd_controls = ['RtVAvgxh','GenTq','BldPitch1','Wave1Elev']
     reqd_outputs = [] #'TwrBsFxt','TwrBsMyt'
     
     # scaling parameters
-    scale_args = {'state_scaling_factor': np.array([100]),
-                  'control_scaling_factor': np.array([1,1000,1]),
-                  'output_scaling_factor': np.array([1000,10000])
+    scale_args = {'state_scaling_factor': np.array([1,100,1]),
+                  'control_scaling_factor': np.array([1,1,1,1]),
+                  'output_scaling_factor': np.array([])
                   }
     
     # filter parameters
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     
     sampling_type = 'KM'
     
-    n_samples = [10,20,50,100,200,300,500]
+    n_samples = [10,20,50]
     
     sampling_time =np.zeros((len(n_samples),len(sampling))) 
     
@@ -65,7 +65,7 @@ if __name__ == '__main__':
         for n,n_samp in enumerate(n_samples):
             
             t1 = timer.time()
-            inputs_sampled,dx_sampled,outputs_sampled,model_inputs,state_derivatives,outputs = sample_data(FAST_sim[:8],sampling_type,n_samp,samp)
+            inputs_sampled,dx_sampled,outputs_sampled,model_inputs,state_derivatives,outputs = sample_data(FAST_sim[:4],sampling_type,n_samp,samp)
             t2 = timer.time()
             
             sampling_time[n,is_] = t2-t1

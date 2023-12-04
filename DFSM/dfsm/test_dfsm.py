@@ -51,6 +51,8 @@ def test_dfsm(DFSM,test_cases,test_ind,simulation_flag = True,plot_flag = True):
         
         x0 = states[0,:]
         
+
+        
         # create interpolating function for controls
         u_pp = CubicSpline(time,controls)
         u_fun = lambda t: u_pp(t)

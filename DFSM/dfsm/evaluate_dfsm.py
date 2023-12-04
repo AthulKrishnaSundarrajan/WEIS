@@ -35,6 +35,7 @@ def evaluate_dfsm(DFSM,inputs,fun_type = 'deriv'):
         
     else:
         
+        # if LTI model
         if DFSM.L_type == 'LTI':
             dx_lin = np.dot(inputs,lin)
             
@@ -42,13 +43,15 @@ def evaluate_dfsm(DFSM,inputs,fun_type = 'deriv'):
     
     if not(DFSM.N_type == None):
         
+        # predict 
         nonlin_prediction = nonlin.predict(inputs)
         
-
+        
         if len(np.shape(nonlin_prediction)) == 1:
             nonlin_prediction = nonlin_prediction.reshape(-1,1)
         
         dx_nonlin[:,error_ind] = dx_nonlin[:,error_ind] + nonlin_prediction
+        #print(nonlin_prediction)
         
     dx = dx_lin + dx_nonlin
     

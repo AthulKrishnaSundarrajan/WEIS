@@ -1,5 +1,5 @@
 general:
-    folder_output: outputs/DFSM_MHK_CT4
+    folder_output: outputs/DFSM_MHK_test
     fname_output: iea15mw
 
 # design_variables:

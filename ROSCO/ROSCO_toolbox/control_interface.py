@@ -172,6 +172,11 @@ class ControllerInterface():
             self.avrSWAP[82] = turbine_state['NacIMU_FA_Acc']
         except KeyError:
             self.avrSWAP[82] = 0
+            
+        try:
+            self.avrSWAP[52] = turbine_state['FA_Acc']
+        except KeyError:
+            self.avrSWAP[52] = 0
 
         # call controller
         self.call_discon()
