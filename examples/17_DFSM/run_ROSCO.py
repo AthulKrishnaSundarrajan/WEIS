@@ -119,14 +119,19 @@ if __name__ == '__main__':
     # Load turbine data from openfast model
     turbine = ROSCO_turbine.Turbine(turbine_params)
     
-    cp_filename = os.path.join(this_dir,path_params['FAST_directory'],path_params['rotor_performance_filename'])
+    cp_filename = os.path.join(this_dir,'RM1_Cp_Ct_Cq.txt') #os.path.join(this_dir,path_params['FAST_directory'],path_params['rotor_performance_filename'])
+    
+    # turbine.load_from_fast(
+    #     path_params['FAST_InputFile'],
+    #     os.path.join(this_dir,path_params['FAST_directory']),
+    #     rot_source='txt',txt_filename=os.path.join(this_dir,path_params['FAST_directory'],path_params['rotor_performance_filename'])
+    #     )
     
     turbine.load_from_fast(
         path_params['FAST_InputFile'],
         os.path.join(this_dir,path_params['FAST_directory']),
-        rot_source='txt',txt_filename=os.path.join(this_dir,path_params['FAST_directory'],path_params['rotor_performance_filename'])
+        rot_source='txt',txt_filename=os.path.join(this_dir,'RM1_Cp_Ct_Cq.txt')
         )
-
     
     # Tune controller 
     controller      = ROSCO_controller.Controller(controller_params)
@@ -142,7 +147,7 @@ if __name__ == '__main__':
     
 
      # datapath
-    region = 'TR'
+    region = 'R'
     datapath = this_dir + os.sep + 'outputs' + os.sep + 'MHK_'+region+'_10' #+ os.sep + 'openfast_runs/rank_0'
     
     # get the entire path
