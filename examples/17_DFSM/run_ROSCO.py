@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt 
 import numpy as np
 import os, platform
-
+import sys
 # ROSCO toolbox modules 
 from ROSCO_toolbox import controller as ROSCO_controller
 from ROSCO_toolbox import turbine as ROSCO_turbine
@@ -37,7 +37,7 @@ def run_sim_ROSCO(t,x,DFSM,param):
     w = param['w_fun'](t)
     rpm2RadSec = 2.0*(np.pi)/60.0
     gen_speed_scaling = param['gen_speed_scaling']
-    #x[DFSM.gen_speed_ind] = x[DFSM.gen_speed_ind]*gen_speed_scaling
+    
     
 
     # populate turbine state dictionary
@@ -59,6 +59,7 @@ def run_sim_ROSCO(t,x,DFSM,param):
     turbine_state['t'] = t
     turbine_state['dt'] = dt
     turbine_state['ws'] = w
+    turbine_state['num_blades'] = int(2)
     turbine_state['gen_speed'] = x[DFSM.gen_speed_ind]*rpm2RadSec*gen_speed_scaling
     turbine_state['gen_eff'] = param['VS_GenEff']/100
     turbine_state['rot_speed'] = x[DFSM.gen_speed_ind]*rpm2RadSec*gen_speed_scaling/param['WE_GearboxRatio']
@@ -74,6 +75,7 @@ def run_sim_ROSCO(t,x,DFSM,param):
     # call ROSCO to get control values
     gen_torque, bld_pitch, nac_yawrate = param['controller_interface'].call_controller(turbine_state)
     
+    # convert to right units
     gen_torque = gen_torque/1000
     bld_pitch = np.rad2deg(bld_pitch)
     
@@ -103,7 +105,7 @@ if __name__ == '__main__':
     this_dir = os.path.dirname(os.path.abspath(__file__))
     
     # parameter file
-    parameter_filename = os.path.join(this_dir,'RM1_MHK.yaml')
+    parameter_filename = os.path.join(this_dir,'OpenFAST','RM1_MHK.yaml')
     
     # tune directory
     
@@ -119,18 +121,14 @@ if __name__ == '__main__':
     # Load turbine data from openfast model
     turbine = ROSCO_turbine.Turbine(turbine_params)
     
-    cp_filename = os.path.join(this_dir,'RM1_Cp_Ct_Cq.txt') #os.path.join(this_dir,path_params['FAST_directory'],path_params['rotor_performance_filename'])
+    # cp ct cq file
+    cp_filename = os.path.join(this_dir,'OpenFAST','MHK_RM1_Cp_Ct_Cq.txt') #os.path.join(this_dir,path_params['FAST_directory'],path_params['rotor_performance_filename'])
     
-    # turbine.load_from_fast(
-    #     path_params['FAST_InputFile'],
-    #     os.path.join(this_dir,path_params['FAST_directory']),
-    #     rot_source='txt',txt_filename=os.path.join(this_dir,path_params['FAST_directory'],path_params['rotor_performance_filename'])
-    #     )
-    
+    # load turbine    
     turbine.load_from_fast(
         path_params['FAST_InputFile'],
         os.path.join(this_dir,path_params['FAST_directory']),
-        rot_source='txt',txt_filename=os.path.join(this_dir,'RM1_Cp_Ct_Cq.txt')
+        rot_source='txt',txt_filename=cp_filename
         )
     
     # Tune controller 
@@ -145,12 +143,13 @@ if __name__ == '__main__':
       txt_filename=cp_filename
       )
     
-
+    #
+    sys.exit()
      # datapath
     region = 'R'
     datapath = this_dir + os.sep + 'outputs' + os.sep + 'MHK_'+region+'_10' #+ os.sep + 'openfast_runs/rank_0'
     
-    # get the entire path
+    # get the path to all .outb files in the directory
     outfiles = [os.path.join(datapath,f) for f in os.listdir(datapath) if valid_extension(f)]
     outfiles = sorted(outfiles)
     
@@ -180,17 +179,18 @@ if __name__ == '__main__':
     # filter parameters
     filter_args = {'states_filter_flag': [False,False,False],
                    'states_filter_type': [[],[],[]],
-                   'states_filter_tf': [[],[0.5],[]],
+                   'states_filter_tf': [[],[],[]],
                    'controls_filter_flag': [False,False,False],
                    'controls_filter_tf': [0,0,0],
                    'outputs_filter_flag': []
                    }
     
-    file_name = this_dir + os.sep + 'linear-models.mat'
+    # name of mat file that has the linearized models
+    mat_file_name = this_dir + os.sep + 'linear-models.mat'
     
     # instantiate class
     sim_detail = SimulationDetails(outfiles, reqd_states,reqd_controls,reqd_outputs,scale_args,filter_args,tmin=00
-                                   ,add_dx2 = True,linear_model_file = file_name,region = region)
+                                   ,add_dx2 = True,linear_model_file = mat_file_name,region = region)
     
     
     
@@ -206,7 +206,7 @@ if __name__ == '__main__':
     
     # split of training-testing data
     n_samples = 100
-    test_inds = [0,1]
+    test_inds = [0]
     
     # construct surrogate model
     dfsm_model = DFSM(sim_detail,n_samples = n_samples,L_type = 'LTI',N_type = None, train_split = 0.4)
@@ -269,11 +269,13 @@ if __name__ == '__main__':
             # solver method and options
             solve_options = {'method':'RK45','rtol':1e-7,'atol':1e-7}
             
+            # start timer and solve for the states and controls
             t1 = timer.time()
             sol =  solve_ivp(run_sim_ROSCO,tspan,x0,method=solve_options['method'],args = (dfsm_model,param),rtol = solve_options['rtol'],atol = solve_options['atol'])
             t2 = timer.time()
             dfsm_model.simulation_time.append(t2-t1)
             
+            # extract solution
             time = sol.t 
             states = sol.y
             states = states.T

@@ -158,6 +158,7 @@ class ControllerInterface():
         self.avrSWAP[0] = turbine_state['iStatus']
         self.avrSWAP[1] = turbine_state['t']
         self.avrSWAP[2] = turbine_state['dt']
+        self.avrSWAP[60] = turbine_state['num_blades']
         self.avrSWAP[3] =  turbine_state['bld_pitch']
         self.avrSWAP[32] = turbine_state['bld_pitch']
         self.avrSWAP[33] = turbine_state['bld_pitch']
