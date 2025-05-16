@@ -42,7 +42,7 @@ OpenFAST: # Options for WEIS fidelity level 3 = nonlinear time domain
         TwFADOF2 : False 
         TwSSDOF1 : False 
         TwSSDOF2 : False 
-        PtfmSgDOF: False 
+        PtfmSgDOF: True 
         PtfmSwDOF: False 
         PtfmHvDOF: False 
         PtfmRDOF : False 
@@ -70,9 +70,9 @@ DFSM:
         save_results: True
         usecase: closed-loop-simulation
     model_options: 
-        reqd_states: [PtfmPitch,TTDspFA,GenSpeed]
+        reqd_states: ['PtfmSurge',PtfmPitch,TTDspFA,GenSpeed]
         reqd_controls: [RtVAvgxh,GenTq,BldPitch1,Wave1Elev]
-        reqd_outputs: [TwrBsFxt,TwrBsMyt,YawBrTAxp,NcIMURAys,GenPwr,RtFldCp,RtFldCt]
+        reqd_outputs: [TwrBsFxt,TwrBsMyt,GenPwr,YawBrTAxp,NcIMURAys,RtFldCp,RtFldCt]
         scale_args:
             state_scaling_factor: [1,1,1]
         filter_args:
@@ -113,8 +113,8 @@ DLC_driver:
         # - DLC: "1.5"
         - DLC: "1.6"
           n_seeds: 1
-          wind_speed: [8,10,12,14,16]
-          analysis_time: 700.
+          wind_speed: [10,12,14,16,18]
+          analysis_time: 800.
           transient_time: 0.
           turbulent_wind:
             HubHt: 150.0

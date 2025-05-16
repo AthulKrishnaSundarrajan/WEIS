@@ -1,5 +1,5 @@
 general:
-    folder_output: /home/athulsun/multifidelity_paper_studies/04_dfsm/transition_test
+    folder_output: /home/athulsun/multifidelity_paper_studies/04_dfsm/outputs/nearrated
     fname_output: refturb_output
 
 design_variables:
