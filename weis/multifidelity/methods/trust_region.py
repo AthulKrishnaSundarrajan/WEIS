@@ -46,7 +46,8 @@ class SimpleTrustRegion(BaseMethod):
         trust_radius=0.2,
         expansion_ratio=2.0,
         contraction_ratio=0.25,
-        optimization_log = False
+        optimization_log = False,
+        log_filename = None
     ):
         """
         Initialize the trust region method and store the user-defined options.
@@ -84,6 +85,7 @@ class SimpleTrustRegion(BaseMethod):
         self.expansion_ratio = expansion_ratio
         self.contraction_ratio = contraction_ratio
         self.optimization_log = optimization_log
+        self.log_filename = log_filename
 
 
 
@@ -116,7 +118,7 @@ class SimpleTrustRegion(BaseMethod):
         scaled_function = lambda x: self.objective_scaler * np.squeeze(
             self.approximation_functions[self.objective](x)
         )
-
+        
         if num_basinhop_iterations:
             minimizer_kwargs = {
                 "method": "SLSQP",
@@ -137,8 +139,8 @@ class SimpleTrustRegion(BaseMethod):
             res = minimize(
                 scaled_function,
                 x0,
-                method="SLSQP",
-                tol=1e-5,
+                method="COBYLA",
+                tol=1e-3,
                 bounds=bounds,
                 constraints=self.list_of_constraints,
                 options={"disp": self.disp == 2, "maxiter": 50},
@@ -220,7 +222,7 @@ class SimpleTrustRegion(BaseMethod):
             print("Best func value:", new_point_high)
 
         if self.optimization_log:
-            with open(self.filename,'a') as f:
+            with open(self.log_filename,'a') as f:
                 f.write("================\n")
                 f.write('Iteration number : '+str(iter+1)+'\n')
                 param_str_new = ", ".join(f"{p:.4f}" for p in x_new)
@@ -257,10 +259,12 @@ class SimpleTrustRegion(BaseMethod):
         self.process_constraints()
 
         if self.optimization_log:
-            filename = 'optimization_log_slsqp.txt'
-            self.filename = filename
 
-            with open(filename, 'w') as f:
+            if self.log_filename == None:
+                log_filename = 'optimization_log_slsqp.txt'
+                self.log_filename = log_filename
+
+            with open(self.log_filename, 'w') as f:
                 f.write("Optimization Log\n")
                 #f.write("================\n")
                 f.write("\n")  # Blank line for spacing
