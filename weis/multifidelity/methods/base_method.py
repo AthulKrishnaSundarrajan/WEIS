@@ -248,6 +248,7 @@ class BaseMethod:
             and 'smt' for now. 
         
         """
+        
         outputs_low = self.model_low.run_vec(self.design_vectors)
         outputs_high = self.model_high.run_vec(self.design_vectors)
 

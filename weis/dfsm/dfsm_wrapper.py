@@ -434,8 +434,15 @@ def dfsm_wrapper(fst_vt, modopt, inputs, discrete_inputs, FAST_runDirectory = No
     reqd_controls = model_options['reqd_controls']
     reqd_outputs = model_options['reqd_outputs']
 
-    for chan in ['TTDspFA','TTDspSS','NcIMURAys','YawBrTAxp']:
-        fst_vt['outlist']['ElastoDyn'][chan] = True
+    for chan in reqd_states+reqd_outputs+reqd_controls:
+        if chan in ['GenTq','GenPwr']:
+            fst_vt['outlist']['ServoDyn'][chan] = True
+        elif chan[:2] == 'Rt':
+            fst_vt['outlist']['AeroDyn'][chan] = True
+        elif chan == 'Wave1Elev':
+            fst_vt['outlist']['SeaState'][chan] == True
+        else:
+            fst_vt['outlist']['ElastoDyn'][chan] = True
     
     fst_vt['outlist']['SeaState']['Wave1Elev'] = True
     # set run dir. THis is the directory where OpenFAST files are stored

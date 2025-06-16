@@ -35,7 +35,7 @@ class BaseModel:
         self.saved_outputs = []
 
         self.warmstart_file = warmstart_file
-
+        
         # If warmstart_file is provided, read in saved results from before
         if warmstart_file is not None:
             if os.path.exists(warmstart_file):
@@ -45,7 +45,7 @@ class BaseModel:
                 # Save those results as lists attributed to this class
                 self.saved_desvars = saved_data["desvars"]
                 self.saved_outputs = saved_data["outputs"]
-
+        
         # Save off design variable sizes so we can flatten and unflatten
         # the desvars vector
         self.set_desvar_size_dict(desvars_init)

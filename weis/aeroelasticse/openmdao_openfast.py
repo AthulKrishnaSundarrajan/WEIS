@@ -644,13 +644,13 @@ class FASTLoadCases(ExplicitComponent):
         #  Allow user-defined OpenFAST options to override WISDEM-generated ones
         #  Re-load modeling options without defaults to learn only what needs to change, has already been validated when first loaded
         modopts_no_defaults = load_yaml(self.options['modeling_options']['fname_input_modeling'])
-
+        
         # Backwards compatibility with Level3
         if 'Level3' in modopts_no_defaults:
             if 'OpenFAST' not in modopts_no_defaults:
                 modopts_no_defaults['OpenFAST'] = {}
             modopts_no_defaults['OpenFAST'].update(modopts_no_defaults['Level3'])
-
+        
         fst_vt = self.load_FAST_model_opts(fst_vt,modopts_no_defaults)
 
         # Apply modeling overrides for faster testing
@@ -929,7 +929,7 @@ class FASTLoadCases(ExplicitComponent):
                     else:
                         continue
                 fst_vt['HydroDyn'][key] = modeling_options['OpenFAST']['HydroDyn'][key]
-
+        
         if 'MoorDyn' in modeling_options['OpenFAST']:    
             for key in modeling_options['OpenFAST']['MoorDyn']:
                 fst_vt['MoorDyn'][key] = modeling_options['OpenFAST']['MoorDyn'][key]

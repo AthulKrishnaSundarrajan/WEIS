@@ -122,7 +122,7 @@ class SimpleTrustRegion(BaseMethod):
         if num_basinhop_iterations:
             minimizer_kwargs = {
                 "method": "SLSQP",
-                "tol": 1e-5,
+                "tol": 1e-3,
                 "bounds": bounds,
                 "constraints": self.list_of_constraints,
                 "options": {"disp": self.disp == 2, "maxiter": 20},
@@ -139,11 +139,11 @@ class SimpleTrustRegion(BaseMethod):
             res = minimize(
                 scaled_function,
                 x0,
-                method="COBYLA",
-                tol=1e-3,
+                method="SLSQP",
+                tol=1e-6,
                 bounds=bounds,
                 constraints=self.list_of_constraints,
-                options={"disp": self.disp == 2, "maxiter": 50},
+                options={"disp": self.disp == 2, "maxiter": 60},
             )
         x_new = res.x
 
@@ -220,8 +220,13 @@ class SimpleTrustRegion(BaseMethod):
             print("Rho", np.squeeze(rho))
             print("Trust radius:", self.trust_radius)
             print("Best func value:", new_point_high)
-
+        
         if self.optimization_log:
+
+            if len(self.constraints) > 0:
+                con_name = self.constraints[0]['name']
+                con_val_old = self.model_high.run(self.design_vectors[-2])[con_name]
+                con_val_new = self.model_high.run(x_new)[con_name]
             with open(self.log_filename,'a') as f:
                 f.write("================\n")
                 f.write('Iteration number : '+str(iter+1)+'\n')
@@ -235,6 +240,9 @@ class SimpleTrustRegion(BaseMethod):
                 f.write('Predicted Obj value at x_old:{:}\n'.format(np.squeeze(prev_point_approx)))
                 f.write('Actual Obj value at x_new:{:}\n'.format(new_point_high))
                 f.write('Predicted Obj value at x_new:{:}\n'.format(np.squeeze(new_point_approx)))
+                if len(self.constraints) > 0:
+                    f.write('Constraint Value at x_old:{:}\n'.format(np.squeeze(con_val_old)))
+                    f.write('Constraint Value at x_new:{:}\n'.format(np.squeeze(con_val_new)))
                 if rho >= self.eta:
                     f.write("Trust region expanded\n")
                 else:
